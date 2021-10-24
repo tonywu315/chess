@@ -1,14 +1,8 @@
 #include "board.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 /* Initializes empty board */
 void init_board(Board *board) {
-    if (!board) {
-        fprintf(stderr, "Error initializing board\n");
-        exit(0);
-    }
-
     int i;
 
     for (i = 0; i < ARRAY_SIZE; i++) {
@@ -24,11 +18,6 @@ void init_board(Board *board) {
 
 /* Creates the starting board */
 void start_board(Board *board) {
-    if (!board) {
-        fprintf(stderr, "Error creating starting board\n");
-        exit(0);
-    }
-
     int i;
 
     init_board(board);
@@ -75,36 +64,6 @@ void start_board(Board *board) {
     }
 }
 
-/* Returns true if square is outside the board */
-/* Uses special property of 0x88 boards */
-int invalid_square(int square) { return square & 0x88; }
-
-/* Moves piece from start to end if it is a legal move */
-int move_piece(Board *board, int start, int end) {
-    if (!board) {
-        fprintf(stderr, "Error initializing board\n");
-        exit(0);
-    }
-
-    /* Start and end must be in the board and be different colors */
-    if (invalid_square(start) || invalid_square(end) ||
-        (board->colors[start] == board->colors[end])) {
-        return FAILURE;
-    }
-
-    /* TODO: Check for legal moves */
-
-    /* Updates board */
-    board->colors[end] = board->colors[start];
-    board->pieces[end] = board->pieces[start];
-    board->colors[start] = EMPTY_COLOR;
-    board->pieces[start] = EMPTY_PIECE;
-
-    board->player = board->player == WHITE ? BLACK : WHITE;
-
-    return SUCCESS;
-}
-
 /* Prints board in simple text format */
 void print_board(Board *board) {
     int i;
@@ -112,11 +71,6 @@ void print_board(Board *board) {
                               {' ', 'P', 'N', 'B', 'R', 'Q', 'K'},
                               {' ', 'p', 'n', 'b', 'r', 'q', 'k'}};
     char players[3][6] = {"", "White", "Black"};
-
-    if (!board) {
-        fprintf(stderr, "Error printing board\n");
-        exit(0);
-    }
 
     /* Flips board if player is black */
     if (board->player == WHITE) {
@@ -143,14 +97,4 @@ void print_board(Board *board) {
     }
 
     printf("\nPlayer to move: %s\n", players[board->player]);
-}
-
-int main() {
-    Board board;
-
-    start_board(&board);
-    print_board(&board);
-
-    move_piece(&board, E2, E4);
-    print_board(&board);
 }
