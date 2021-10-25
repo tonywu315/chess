@@ -6,6 +6,8 @@
 #define ALL_CASTLE 15
 #define SUCCESS 0
 #define FAILURE 1
+#define TRUE 1
+#define FALSE 0
 
 /* 0x88 Board Representation (16x8 array) */
 typedef struct board {
@@ -16,6 +18,8 @@ typedef struct board {
     char castle;        /* 0-15 number that represents castling availability */
     char ply;           /* Keeps track for 50 move rule */
 } Board;
+
+extern Board board;
 
 typedef struct move {
     char start;
