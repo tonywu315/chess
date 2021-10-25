@@ -1,5 +1,10 @@
-typedef struct move Move;
+#ifndef MOVE_H
+#define MOVE_H
 
-int generate_moves(Move *moves);
-void move_piece(int start, int end);
-int player_move_piece(int start, int end);
+struct move;
+
+void move_piece(struct move move);
+void unmove_piece(struct move move);
+int player_move_piece(struct move move);
+
+#endif

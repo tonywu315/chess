@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <stdio.h>
+
 #define MAX_MOVES 256
 #define ARRAY_SIZE 128
 #define ALL_CASTLE 15
@@ -11,20 +13,24 @@
 
 /* 0x88 Board Representation (16x8 array) */
 typedef struct board {
-    char colors[ARRAY_SIZE];
-    char pieces[ARRAY_SIZE];
-    char player;        /* Player to move */
-    char enpassant;     /* En passant file */
-    char castle;        /* 0-15 number that represents castling availability */
-    char ply;           /* Keeps track for 50 move rule */
+    unsigned char colors[ARRAY_SIZE];
+    unsigned char pieces[ARRAY_SIZE];
+    unsigned char player;        /* Player to move */
+    unsigned char castle;        /* 0-15 number that represents castling availability */
+    unsigned char enpassant;     /* En passant square */
+    unsigned char ply;           /* Keeps track for 50 move rule */
+    unsigned char king[2];       /* Location of kings */
 } Board;
 
 extern Board board;
 
 typedef struct move {
-    char start;
-    char end;
-    char flag;
+    unsigned char start;
+    unsigned char end;
+    unsigned char captured;
+    unsigned char flag;
+    unsigned char enpassant;
+    unsigned char ply;
 } Move;
 
 enum square {
@@ -54,7 +60,7 @@ enum piece {
     KING
 };
 
-enum directions {
+enum direction {
     UPRIGHT = 17,
     UP = 16,
     UPLEFT = 15,
@@ -62,20 +68,22 @@ enum directions {
     LEFT = -1,
     DOWNRIGHT = -15,
     DOWN = -16,
-    DOWNLEFT = -17,
+    DOWNLEFT = -17
 };
 
-enum flags {
-    NORMAL,
-    ENPASSANT,
-    CASTLE_WK,
-    CASTLE_WQ,
-    CASTLE_BK,
-    CASTLE_BQ,
-    PROMOTION_N,
-    PROMOTION_B,
-    PROMOTION_R,
-    PROMOTION_Q,
+enum flag {
+    NORMAL = 0,
+    CAPTURE = 3,
+    DOUBLE = 5,
+    ENPASSANT = 6,
+    CASTLE_WK = 1,
+    CASTLE_WQ = 2,
+    CASTLE_BK = 4,
+    CASTLE_BQ = 8,
+    PROMOTION_N = 9,
+    PROMOTION_B = 10,
+    PROMOTION_R = 11,
+    PROMOTION_Q = 12
 };
 
 #endif
