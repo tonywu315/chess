@@ -1,5 +1,13 @@
 #include "board.h"
+#include "constants.h"
 #include <stdio.h>
+
+/* Returns true if square is outside the board */
+int invalid_square(int square) { return square & 0x88; }
+
+/* Returns rank and file of square (number from 0 to 7) */
+int get_rank(int square) { return square >> 4; }
+int get_file(int square) { return square & 7; }
 
 /* Initializes empty board */
 void init_board(Board *board) {
