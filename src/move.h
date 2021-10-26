@@ -1,10 +1,10 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-struct move;
+#include "constants.h"
 
-void move_piece(struct move move);
-void unmove_piece(struct move move);
-int player_move_piece(struct move move);
+void move_piece(Move move);
+void unmove_piece(Move move);
+int player_move_piece(Move move);
 
 #endif

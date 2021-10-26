@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #define MAX_MOVES 256
@@ -8,29 +10,29 @@
 #define ALL_CASTLE 15
 #define SUCCESS 0
 #define FAILURE 1
-#define TRUE 1
-#define FALSE 0
+
+typedef uint_fast8_t Fast;
 
 /* 0x88 Board Representation (16x8 array) */
 typedef struct board {
-    unsigned char colors[ARRAY_SIZE];
-    unsigned char pieces[ARRAY_SIZE];
-    unsigned char player;        /* Player to move */
-    unsigned char castle;        /* 0-15 number that represents castling availability */
-    unsigned char enpassant;     /* En passant square */
-    unsigned char ply;           /* Keeps track for 50 move rule */
-    unsigned char king[2];       /* Location of kings */
+    Fast colors[ARRAY_SIZE];
+    Fast pieces[ARRAY_SIZE];
+    Fast player;    /* Player to move */
+    Fast castle;    /* 0-15 number that represents castling availability */
+    Fast enpassant; /* En passant square */
+    Fast ply;       /* Keeps track for 50 move rule */
+    Fast king[2];   /* Location of kings */
 } Board;
 
 extern Board board;
 
 typedef struct move {
-    unsigned char start;
-    unsigned char end;
-    unsigned char captured;
-    unsigned char flag;
-    unsigned char enpassant;
-    unsigned char ply;
+    Fast start;
+    Fast end;
+    Fast captured;
+    Fast flag;
+    Fast enpassant;
+    Fast ply;
 } Move;
 
 enum square {

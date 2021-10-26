@@ -1,10 +1,10 @@
 #ifndef MOVE_GENERATION_H
 #define MOVE_GENERATION_H
 
-struct move;
+#include "constants.h"
 
-struct move create_move(char start, char end, char flag);
-int is_attacked(int square, char player);
-int generate_moves(struct move *moves);
+Move create_move(Fast start, Fast end, Fast flag);
+int is_attacked(Fast square, Fast player);
+int generate_moves(Move *moves);
 
 #endif

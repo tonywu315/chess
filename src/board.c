@@ -1,18 +1,15 @@
 #include "board.h"
-#include "constants.h"
 
 /* Returns true if square is outside the board */
-int invalid_square(int square) { return square & 0x88; }
+int invalid_square(Fast square) { return square & 0x88; }
 
 /* Returns rank and file of square (number from 0 to 7) */
-int get_rank(int square) { return square >> 4; }
-int get_file(int square) { return square & 7; }
+int get_rank(Fast square) { return square >> 4; }
+int get_file(Fast square) { return square & 7; }
 
 /* Initializes empty board */
 void init_board() {
-    int i;
-
-    for (i = 0; i < ARRAY_SIZE; i++) {
+    for (int i = 0; i < ARRAY_SIZE; i++) {
         board.pieces[i] = EMPTY_PIECE;
         board.colors[i] = EMPTY_COLOR;
     }
@@ -26,8 +23,6 @@ void init_board() {
 
 /* Creates the starting board */
 void start_board() {
-    int i;
-
     init_board(board);
 
     /* Starting chess pieces */
@@ -53,31 +48,30 @@ void start_board() {
     board.king[BLACK - 1] = E8;
 
     /* Pawns */
-    for (i = A2; i <= H2; i++) {
+    for (int i = A2; i <= H2; i++) {
         board.pieces[i] = PAWN;
     }
-    for (i = A7; i <= H7; i++) {
+    for (int i = A7; i <= H7; i++) {
         board.pieces[i] = PAWN;
     }
 
     /* Colors for pieces */
-    for (i = A1; i <= H1; i++) {
+    for (int i = A1; i <= H1; i++) {
         board.colors[i] = WHITE;
     }
-    for (i = A2; i <= H2; i++) {
+    for (int i = A2; i <= H2; i++) {
         board.colors[i] = WHITE;
     }
-    for (i = A7; i <= H7; i++) {
+    for (int i = A7; i <= H7; i++) {
         board.colors[i] = BLACK;
     }
-    for (i = A8; i <= H8; i++) {
+    for (int i = A8; i <= H8; i++) {
         board.colors[i] = BLACK;
     }
 }
 
 /* Prints board in simple text format */
 void print_board() {
-    int i, j, k;
     char text[3][7] = {{' ', ' ', ' ', ' ', ' ', ' ', ' '},
                        {' ', 'P', 'N', 'B', 'R', 'Q', 'K'},
                        {' ', 'p', 'n', 'b', 'r', 'q', 'k'}};
@@ -85,17 +79,17 @@ void print_board() {
 
     /* Flips board if player is black */
     if (board.player == WHITE) {
-        for (i = 7; i >= 0; i--) {
-            for (j = 0; j < 8; j++) {
-                k = i * 16 + j;
+        for (int i = 7; i >= 0; i--) {
+            for (int j = 0; j < 8; j++) {
+                int k = i * 16 + j;
                 printf("%c", text[(int)board.colors[k]][(int)board.pieces[k]]);
             }
             printf("\n");
         }
     } else {
-        for (i = 0; i < 8; i++) {
-            for (j = 7; j >= 0; j--) {
-                k = i * 16 + j;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 7; j >= 0; j--) {
+                int k = i * 16 + j;
                 printf("%c", text[(int)board.colors[k]][(int)board.pieces[k]]);
             }
             printf("\n");

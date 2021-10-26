@@ -1,20 +1,11 @@
 #include "move.h"
 #include "board.h"
-#include "constants.h"
 #include "move_generation.h"
 
-/* Moves piece from start to end and deletes start piece */
-static void update_piece(int start, int end) {
-    board.colors[end] = board.colors[start];
-    board.pieces[end] = board.pieces[start];
-    board.colors[start] = EMPTY_COLOR;
-    board.pieces[start] = EMPTY_PIECE;
-}
+static void update_piece(Fast start, Fast end);
 
 /* Changes board based on move (does not check for legality) */
 void move_piece(Move move) {
-    int square;
-
     /* Resets ply if pawn move or capture for 50 move rule */
     board.ply++;
     if (board.pieces[move.start] == PAWN || move.flag == CAPTURE) {
@@ -50,8 +41,8 @@ void move_piece(Move move) {
     case DOUBLE:
         board.enpassant = (move.start + move.end) / 2;
         break;
-    case ENPASSANT:
-        square = 16 * get_rank(move.start) + get_file(move.end);
+    case ENPASSANT:; /* Semicolon is necessary to compile */
+        Fast square = 16 * get_rank(move.start) + get_file(move.end);
         board.colors[square] = EMPTY_COLOR;
         board.pieces[square] = EMPTY_PIECE;
         break;
@@ -151,9 +142,6 @@ void unmove_piece(Move move) {
 
 /* Moves piece from start to end if it is legal */
 int player_move_piece(Move move) {
-    Move moves[MAX_MOVES];
-    int count, i;
-
     /* Start and end must be in the board and be different colors */
     /* Starting square must be the player to move's piece */
     if (invalid_square(move.start) || invalid_square(move.end) ||
@@ -162,14 +150,15 @@ int player_move_piece(Move move) {
         return FAILURE;
     }
 
-    /* Check if piece is in moves list */
-    count = generate_moves(moves);
+    /* Generate pseudo legal moves */
+    Move moves[MAX_MOVES];
+    int count = generate_moves(moves);
 
     /* NOTE: Could change moves from array to hashset later, but this code is
     for checking if player moves are legal, so performance is not critical */
 
     /* Iterates through all legal moves and checks if the move is in there */
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         if (moves[i].start == move.start && moves[i].end == move.end) {
             move_piece(move);
             if (is_attacked(board.king[2 - board.player], 3 - board.player)) {
@@ -181,4 +170,12 @@ int player_move_piece(Move move) {
     }
 
     return FAILURE;
+}
+
+/* Moves piece from start to end and deletes start piece */
+static void update_piece(Fast start, Fast end) {
+    board.colors[end] = board.colors[start];
+    board.pieces[end] = board.pieces[start];
+    board.colors[start] = EMPTY_COLOR;
+    board.pieces[start] = EMPTY_PIECE;
 }
