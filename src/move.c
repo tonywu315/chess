@@ -63,16 +63,16 @@ void move_piece(Move move) {
         board.castle -= CASTLE_BQ;
         break;
     case PROMOTION_N:
-        board.pieces[move.end] = PROMOTION_Q;
+        board.pieces[move.end] = KNIGHT;
         break;
     case PROMOTION_B:
-        board.pieces[move.end] = PROMOTION_B;
+        board.pieces[move.end] = BISHOP;
         break;
     case PROMOTION_R:
-        board.pieces[move.end] = PROMOTION_R;
+        board.pieces[move.end] = ROOK;
         break;
     case PROMOTION_Q:
-        board.pieces[move.end] = PROMOTION_Q;
+        board.pieces[move.end] = QUEEN;
         break;
     }
 
@@ -141,7 +141,7 @@ void unmove_piece(Move move) {
 }
 
 /* Moves piece from start to end if it is legal */
-int move_legal(Move *move, Fast start, Fast end) {
+int move_legal(Move *move, Fast start, Fast end, Fast promotion) {
     /* Start and end must be in the board and be different colors */
     /* Starting square must be the player to move's piece */
     if (invalid_square(start) || invalid_square(end) ||
@@ -159,7 +159,8 @@ int move_legal(Move *move, Fast start, Fast end) {
 
     /* Iterates through all legal moves and checks if the move is in there */
     for (int i = 0; i < count; i++) {
-        if (moves[i].start == start && moves[i].end == end) {
+        if (moves[i].start == start && moves[i].end == end &&
+            (!promotion || moves[i].flag == promotion)) {
             *move = moves[i];
             move_piece(moves[i]);
             if (is_attacked(board.king[2 - board.player], 3 - board.player)) {

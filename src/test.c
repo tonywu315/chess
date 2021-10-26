@@ -8,8 +8,8 @@ Board board;
 /* Simple 2 player chess program */
 static void two_player() {
     char move[5] = {0};
-    int one, two, three, four;
-    Move previous;
+    int one, two, three, four, five;
+    Move last;
     bool undo = false;
 
     start_board();
@@ -26,31 +26,59 @@ static void two_player() {
         three = tolower(move[2]) - 'a';
         four = move[3] - '1';
 
+        switch (tolower(move[4])) {
+        case 'n':
+            five = PROMOTION_N;
+            break;
+        case 'b':
+            five = PROMOTION_B;
+            break;
+        case 'r':
+            five = PROMOTION_R;
+            break;
+        case 'q':
+            five = PROMOTION_Q;
+            break;
+        default:
+            five = 0;
+            break;
+        }
+
         if (undo && !strcmp(move, "undo")) {
-            unmove_piece(previous);
+            unmove_piece(last);
             undo = false;
             printf("\n");
             print_board();
         } else if (!strcmp(move, "0-0")) {
-            if ((board.player == WHITE && !move_legal(&previous, E1, G1)) ||
-                (board.player == BLACK && !move_legal(&previous, E8, G8))) {
+            if ((board.player == WHITE && !move_legal(&last, E1, G1, false)) ||
+                (board.player == BLACK && !move_legal(&last, E8, G8, false))) {
                 undo = true;
                 printf("\n");
                 print_board();
             }
         } else if (!strcmp(move, "0-0-0")) {
-            if ((board.player == WHITE && !move_legal(&previous, E1, C1)) ||
-                (board.player == BLACK && !move_legal(&previous, E8, C8))) {
+            if ((board.player == WHITE && !move_legal(&last, E1, C1, false)) ||
+                (board.player == BLACK && !move_legal(&last, E8, C8, false))) {
                 undo = true;
                 printf("\n");
                 print_board();
             }
         } else if (one >= 0 && two >= 0 && three >= 0 && four >= 0 &&
-                   one <= 8 && two <= 8 && three <= 8 && four <= 8 &&
-                   !move_legal(&previous, one + two * 16, three + four * 16)) {
-            undo = true;
-            printf("\n");
-            print_board();
+                   one <= 7 && two <= 7 && three <= 7 && four <= 7) {
+            Fast start = one + two * 16, end = three + four * 16;
+            Fast square = board.player == WHITE ? 6 : 1;
+
+            if (two == square && board.pieces[start] == PAWN) {
+                if (five && !move_legal(&last, start, end, five)) {
+                    undo = true;
+                    printf("\n");
+                    print_board();
+                }
+            } else if (!move_legal(&last, start, end, false)) {
+                undo = true;
+                printf("\n");
+                print_board();
+            }
         }
     }
 }

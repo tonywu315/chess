@@ -135,21 +135,6 @@ static int generate_pawn_move(Move *moves, int count, Fast start) {
             for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
                 moves[count++] = create_move(start, end, i);
             }
-
-            /* Adds promotion capture moves */
-            if (!invalid_square(end + RIGHT) &&
-                board.colors[end + RIGHT] == 3 - board.player) {
-                for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    moves[count++] = create_move(start, end + RIGHT, i);
-                }
-            }
-            if (!invalid_square(end + LEFT) &&
-                board.colors[end + RIGHT] == 3 - board.player) {
-                for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    moves[count++] = create_move(start, end + LEFT, i);
-                }
-            }
-
         } else {
             /* Adds move and double move if on special rank */
             moves[count++] = create_move(start, end, NORMAL);
@@ -163,7 +148,14 @@ static int generate_pawn_move(Move *moves, int count, Fast start) {
     Fast attack = end + RIGHT;
     if (!invalid_square(attack) && board.colors[attack] != board.player) {
         if (board.colors[attack] != EMPTY_COLOR) {
-            moves[count++] = create_move(start, attack, CAPTURE);
+            /* Adds promotion capture moves */
+            if (get_rank(start) == 7 - second) {
+                for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
+                    moves[count++] = create_move(start, attack, i);
+                }
+            } else {
+                moves[count++] = create_move(start, attack, CAPTURE);
+            }
         } else if (attack == board.enpassant) {
             moves[count++] = create_move(start, attack, ENPASSANT);
         }
@@ -171,7 +163,14 @@ static int generate_pawn_move(Move *moves, int count, Fast start) {
     attack = end + LEFT;
     if (!invalid_square(attack) && board.colors[attack] != board.player) {
         if (board.colors[attack] != EMPTY_COLOR) {
-            moves[count++] = create_move(start, attack, CAPTURE);
+            /* Adds promotion capture moves */
+            if (get_rank(start) == 7 - second) {
+                for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
+                    moves[count++] = create_move(start, attack, i);
+                }
+            } else {
+                moves[count++] = create_move(start, attack, CAPTURE);
+            }
         } else if (attack == board.enpassant) {
             moves[count++] = create_move(start, attack, ENPASSANT);
         }
