@@ -1,5 +1,10 @@
-typedef struct move Move;
+#ifndef MOVE_H
+#define MOVE_H
 
-int generate_moves(Move *moves);
-void move_piece(int start, int end);
-int player_move_piece(int start, int end);
+#include "constants.h"
+
+void move_piece(Move move);
+void unmove_piece(Move move);
+int move_legal(Move *move, Fast start, Fast end);
+
+#endif
