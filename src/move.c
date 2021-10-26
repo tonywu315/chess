@@ -99,15 +99,15 @@ void unmove_piece(Move move) {
     /* Undoes move and replaces any captured piece */
     update_piece(move.end, move.start);
     if (move.captured) {
-        /* Replaces piece for enpassant captures */
-        if (move.flag == ENPASSANT) {
-            int square = 16 * get_rank(move.start) + get_file(move.end);
-            board.colors[square] = board.player;
-            board.pieces[square] = PAWN;
-        } else {
-            board.colors[move.end] = board.player;
-            board.pieces[move.end] = move.captured;
-        }
+        board.colors[move.end] = board.player;
+        board.pieces[move.end] = move.captured;
+    }
+
+    /* Replaces enpassant captured pieces */
+    if (move.flag == ENPASSANT) {
+        int square = 16 * get_rank(move.start) + get_file(move.end);
+        board.colors[square] = board.player;
+        board.pieces[square] = PAWN;
     }
 
     /* Additional moves based on flag */
@@ -141,12 +141,12 @@ void unmove_piece(Move move) {
 }
 
 /* Moves piece from start to end if it is legal */
-int player_move_piece(Move move) {
+int move_legal(Move *move, Fast start, Fast end) {
     /* Start and end must be in the board and be different colors */
     /* Starting square must be the player to move's piece */
-    if (invalid_square(move.start) || invalid_square(move.end) ||
-        board.colors[move.start] != board.player ||
-        board.colors[move.end] == board.player) {
+    if (invalid_square(start) || invalid_square(end) ||
+        board.colors[start] != board.player ||
+        board.colors[end] == board.player) {
         return FAILURE;
     }
 
@@ -159,10 +159,11 @@ int player_move_piece(Move move) {
 
     /* Iterates through all legal moves and checks if the move is in there */
     for (int i = 0; i < count; i++) {
-        if (moves[i].start == move.start && moves[i].end == move.end) {
-            move_piece(move);
+        if (moves[i].start == start && moves[i].end == end) {
+            *move = moves[i];
+            move_piece(moves[i]);
             if (is_attacked(board.king[2 - board.player], 3 - board.player)) {
-                unmove_piece(move);
+                unmove_piece(moves[i]);
                 return FAILURE;
             }
             return SUCCESS;

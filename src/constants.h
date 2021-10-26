@@ -1,9 +1,12 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_MOVES 256
 #define ARRAY_SIZE 128
