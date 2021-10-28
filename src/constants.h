@@ -7,8 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_MOVES 256
+#define MAX_GAME_LENTH 1024
 #define ARRAY_SIZE 128
 #define ALL_CASTLE 15
 #define SUCCESS 0
@@ -37,6 +39,10 @@ typedef struct move {
     Fast enpassant;
     Fast ply;
 } Move;
+
+extern Move game_moves[MAX_GAME_LENTH]; /* May need to reallocate rarely */
+extern int root_pos;
+extern int search_pos;
 
 enum square {
     A1 = 0  , B1, C1, D1, E1, F1, G1, H1,

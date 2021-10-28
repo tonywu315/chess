@@ -2,26 +2,26 @@
 #include "board.h"
 #include "move_generation.h"
 
-static void update_piece(Fast start, Fast end);
+static inline void update_piece(Fast start, Fast end);
 
 /* Changes board based on move (does not check for legality) */
-void move_piece(Move move) {
+void move_piece(Move *move) {
     /* Resets ply if pawn move or capture for 50 move rule */
     board.ply++;
-    if (board.pieces[move.start] == PAWN || move.flag == CAPTURE) {
+    if (board.pieces[move->start] == PAWN || move->flag == CAPTURE) {
         board.ply = 0;
     }
 
     /* Updates king position */
-    if (board.pieces[move.start] == KING) {
-        board.king[board.player - 1] = move.end;
+    if (board.pieces[move->start] == KING) {
+        board.king[board.player - 1] = move->end;
     }
 
     /* Updates board */
-    update_piece(move.start, move.end);
+    update_piece(move->start, move->end);
 
     /* Moving rook removes castle option for that side */
-    switch (move.start) {
+    switch (move->start) {
     case H1:
         board.castle -= CASTLE_WK;
         break;
@@ -37,12 +37,12 @@ void move_piece(Move move) {
     }
 
     /* Additional moves based on flag */
-    switch (move.flag) {
+    switch (move->flag) {
     case DOUBLE:
-        board.enpassant = (move.start + move.end) / 2;
+        board.enpassant = (move->start + move->end) / 2;
         break;
     case ENPASSANT:; /* Semicolon is necessary to compile */
-        Fast square = 16 * get_rank(move.start) + get_file(move.end);
+        Fast square = 16 * get_rank(move->start) + get_file(move->end);
         board.colors[square] = EMPTY_COLOR;
         board.pieces[square] = EMPTY_PIECE;
         break;
@@ -63,55 +63,58 @@ void move_piece(Move move) {
         board.castle -= CASTLE_BQ;
         break;
     case PROMOTION_N:
-        board.pieces[move.end] = KNIGHT;
+        board.pieces[move->end] = KNIGHT;
         break;
     case PROMOTION_B:
-        board.pieces[move.end] = BISHOP;
+        board.pieces[move->end] = BISHOP;
         break;
     case PROMOTION_R:
-        board.pieces[move.end] = ROOK;
+        board.pieces[move->end] = ROOK;
         break;
     case PROMOTION_Q:
-        board.pieces[move.end] = QUEEN;
+        board.pieces[move->end] = QUEEN;
         break;
     }
 
     /* Removes enpassant flag after 1 move */
-    if (move.flag != DOUBLE) {
+    if (move->flag != DOUBLE) {
         board.enpassant = -1;
     }
 
-    /* Switches players */
+    /* Switches players, increments search, and adds to moves */
     board.player = 3 - board.player;
+    game_moves[search_pos++] = *move;
 }
 
 /* Reverses move_piece function */
-void unmove_piece(Move move) {
+void unmove_piece() {
+    Move *move = &game_moves[--search_pos];
+
     /* Resets ply and enpassant */
-    board.ply = move.ply;
-    board.enpassant = move.enpassant;
+    board.ply = move->ply;
+    board.enpassant = move->enpassant;
 
     /* Resets king position */
-    if (board.pieces[move.end] == KING) {
-        board.king[2 - board.player] = move.start;
+    if (board.pieces[move->end] == KING) {
+        board.king[2 - board.player] = move->start;
     }
 
     /* Undoes move and replaces any captured piece */
-    update_piece(move.end, move.start);
-    if (move.captured) {
-        board.colors[move.end] = board.player;
-        board.pieces[move.end] = move.captured;
+    update_piece(move->end, move->start);
+    if (move->captured) {
+        board.colors[move->end] = board.player;
+        board.pieces[move->end] = move->captured;
     }
 
     /* Replaces enpassant captured pieces */
-    if (move.flag == ENPASSANT) {
-        int square = 16 * get_rank(move.start) + get_file(move.end);
+    if (move->flag == ENPASSANT) {
+        int square = 16 * get_rank(move->start) + get_file(move->end);
         board.colors[square] = board.player;
         board.pieces[square] = PAWN;
     }
 
     /* Additional moves based on flag */
-    switch (move.flag) {
+    switch (move->flag) {
     case CASTLE_WK:
         update_piece(F1, H1);
         board.castle += CASTLE_WK;
@@ -132,16 +135,16 @@ void unmove_piece(Move move) {
     case PROMOTION_B:
     case PROMOTION_R:
     case PROMOTION_Q:
-        board.pieces[move.start] = PAWN;
+        board.pieces[move->start] = PAWN;
         break;
     }
 
-    /* Switches players */
+    /* Switches players and decrements search */
     board.player = 3 - board.player;
 }
 
 /* Moves piece from start to end if it is legal */
-int move_legal(Move *move, Fast start, Fast end, Fast promotion) {
+int move_legal(Fast start, Fast end, Fast promotion) {
     /* Start and end must be in the board and be different colors */
     /* Starting square must be the player to move's piece */
     if (invalid_square(start) || invalid_square(end) ||
@@ -161,10 +164,9 @@ int move_legal(Move *move, Fast start, Fast end, Fast promotion) {
     for (int i = 0; i < count; i++) {
         if (moves[i].start == start && moves[i].end == end &&
             (!promotion || moves[i].flag == promotion)) {
-            *move = moves[i];
-            move_piece(moves[i]);
-            if (is_attacked(board.king[2 - board.player], 3 - board.player)) {
-                unmove_piece(moves[i]);
+            move_piece(&moves[i]);
+            if (in_check()) {
+                unmove_piece();
                 return FAILURE;
             }
             return SUCCESS;
@@ -175,7 +177,7 @@ int move_legal(Move *move, Fast start, Fast end, Fast promotion) {
 }
 
 /* Moves piece from start to end and deletes start piece */
-static void update_piece(Fast start, Fast end) {
+static inline void update_piece(Fast start, Fast end) {
     board.colors[end] = board.colors[start];
     board.pieces[end] = board.pieces[start];
     board.colors[start] = EMPTY_COLOR;
