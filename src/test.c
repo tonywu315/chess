@@ -1,31 +1,15 @@
+#include "benchmark.h"
 #include "board.h"
-#include "constants.h"
 #include "move.h"
 #include "move_generation.h"
-
-typedef unsigned long long u64;
 
 Board board;
 Move game_moves[MAX_GAME_LENTH];
 int root_pos;
 int search_pos;
 
-static void two_player();
-static void benchmark();
-static u64 perft(int depth);
-static u64 pseudo_perft(int depth);
-
-/* Test file for code */
-int main() {
-    root_pos = 0, search_pos = 0;
-
-    benchmark(6);
-
-    return SUCCESS;
-}
-
 /* Simple 2 player chess program */
-static void two_player() {
+void two_player() {
     char move[5] = {0};
     int one, two, three, four, five;
 
@@ -90,61 +74,11 @@ static void two_player() {
     }
 }
 
-/* Computes time to complete task */
-static void benchmark(int depth) {
-    int nodes;
-    double time;
-    clock_t begin_time, end_time;
+/* Test file for code */
+int main() {
+    root_pos = 0, search_pos = 0;
 
-    start_board();
+    benchmark(6);
 
-    begin_time = clock();
-    nodes = pseudo_perft(depth);
-    end_time = clock();
-    time = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
-
-    printf("Depth %d, Nodes: %d\n", depth, nodes);
-    printf("Time: %lf seconds, MNPS: %.3f\n\n", time, nodes / (time * 1000000));
-}
-
-/* Performance test for enumerating all moves to a certain depth */
-static u64 perft(int depth) {
-    Move move_list[MAX_MOVES];
-    int count, i;
-    u64 nodes = 0;
-
-    if (depth == 0) {
-        return 1ULL;
-    }
-
-    count = generate_moves(move_list);
-
-    for (i = 0; i < count; i++) {
-        move_piece(&move_list[i]);
-        if (!in_check()) {
-            nodes += perft(depth - 1);
-        }
-        unmove_piece();
-    }
-    return nodes;
-}
-
-/* Performance test for enumerating all pseudo legal moves to a certain depth */
-static u64 pseudo_perft(int depth) {
-    Move move_list[MAX_MOVES];
-    int count, i;
-    u64 nodes = 0;
-
-    count = generate_moves(move_list);
-
-    if (depth == 1) {
-        return (u64)count;
-    }
-
-    for (i = 0; i < count; i++) {
-        move_piece(&move_list[i]);
-        nodes += pseudo_perft(depth - 1);
-        unmove_piece();
-    }
-    return nodes;
+    return SUCCESS;
 }
