@@ -3,8 +3,8 @@
 
 #include "constants.h"
 
-void move_piece(Move move);
-void unmove_piece(Move move);
-int move_legal(Move *move, Fast start, Fast end, Fast promotion);
+void move_piece(Move *move);
+void unmove_piece();
+int move_legal(Fast start, Fast end, Fast promotion);
 
 #endif

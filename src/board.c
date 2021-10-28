@@ -1,11 +1,11 @@
 #include "board.h"
 
 /* Returns true if square is outside the board */
-int invalid_square(Fast square) { return square & 0x88; }
+inline int invalid_square(Fast square) { return square & 0x88; }
 
 /* Returns rank and file of square (number from 0 to 7) */
-int get_rank(Fast square) { return square >> 4; }
-int get_file(Fast square) { return square & 7; }
+inline int get_rank(Fast square) { return square >> 4; }
+inline int get_file(Fast square) { return square & 7; }
 
 /* Initializes empty board */
 void init_board() {
@@ -16,9 +16,12 @@ void init_board() {
 
     board.player = WHITE;
     board.castle = ALL_CASTLE;
-    board.enpassant = -1;
+    board.enpassant = 255;
     board.ply = 0;
-    board.king[WHITE - 1] = -1;
+    board.king[WHITE - 1] = 255;
+
+    root_pos = 0;
+    search_pos = 0;
 }
 
 /* Creates the starting board */
@@ -76,6 +79,8 @@ void print_board() {
                        {' ', 'P', 'N', 'B', 'R', 'Q', 'K'},
                        {' ', 'p', 'n', 'b', 'r', 'q', 'k'}};
     char players[3][6] = {"", "White", "Black"};
+
+    printf("\n");
 
     /* Flips board if player is black */
     if (board.player == WHITE) {

@@ -1,16 +1,17 @@
+#include "benchmark.h"
 #include "board.h"
-#include "constants.h"
 #include "move.h"
 #include "move_generation.h"
 
 Board board;
+Move game_moves[MAX_GAME_LENTH];
+int root_pos;
+int search_pos;
 
 /* Simple 2 player chess program */
-static void two_player() {
+void two_player() {
     char move[5] = {0};
     int one, two, three, four, five;
-    Move last;
-    bool undo = false;
 
     start_board();
 
@@ -44,23 +45,17 @@ static void two_player() {
             break;
         }
 
-        if (undo && !strcmp(move, "undo")) {
-            unmove_piece(last);
-            undo = false;
-            printf("\n");
+        if (!strcmp(move, "undo") && search_pos) {
+            unmove_piece();
             print_board();
         } else if (!strcmp(move, "0-0")) {
-            if ((board.player == WHITE && !move_legal(&last, E1, G1, false)) ||
-                (board.player == BLACK && !move_legal(&last, E8, G8, false))) {
-                undo = true;
-                printf("\n");
+            if ((board.player == WHITE && !move_legal(E1, G1, false)) ||
+                (board.player == BLACK && !move_legal(E8, G8, false))) {
                 print_board();
             }
         } else if (!strcmp(move, "0-0-0")) {
-            if ((board.player == WHITE && !move_legal(&last, E1, C1, false)) ||
-                (board.player == BLACK && !move_legal(&last, E8, C8, false))) {
-                undo = true;
-                printf("\n");
+            if ((board.player == WHITE && !move_legal(E1, C1, false)) ||
+                (board.player == BLACK && !move_legal(E8, C8, false))) {
                 print_board();
             }
         } else if (one >= 0 && two >= 0 && three >= 0 && four >= 0 &&
@@ -69,14 +64,10 @@ static void two_player() {
             Fast square = board.player == WHITE ? 6 : 1;
 
             if (two == square && board.pieces[start] == PAWN) {
-                if (five && !move_legal(&last, start, end, five)) {
-                    undo = true;
-                    printf("\n");
+                if (five && !move_legal(start, end, five)) {
                     print_board();
                 }
-            } else if (!move_legal(&last, start, end, false)) {
-                undo = true;
-                printf("\n");
+            } else if (!move_legal(start, end, false)) {
                 print_board();
             }
         }
@@ -85,7 +76,9 @@ static void two_player() {
 
 /* Test file for code */
 int main() {
-    two_player();
+    root_pos = 0, search_pos = 0;
 
-    return 0;
+    benchmark(6);
+
+    return SUCCESS;
 }

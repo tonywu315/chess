@@ -4,7 +4,8 @@
 #include "constants.h"
 
 Move create_move(Fast start, Fast end, Fast flag);
-int is_attacked(Fast square, Fast player);
+int is_attacking(Fast square, Fast player);
+int in_check();
 int generate_moves(Move *moves);
 
 #endif
