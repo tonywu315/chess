@@ -7,80 +7,83 @@ typedef unsigned long long U64;
 
 /*
 CURRENT PERFORMANCE FOR DEPTH 6
-perft:          2.555 MNPS
-speedy_perft:   16.651 MNPS
+perft:          2.658 MNPS
+speedy_perft:   16.974 MNPS
 pseudo_perft:   21.696 MNPS
+loop_speed:     609.352 MNPS
 */
 
 /* Performance test for enumerating all moves to a certain depth */
-U64 perft(int depth) {
+static inline void perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
-    U64 nodes = 0;
 
     if (depth == 0) {
-        return 1ULL;
-    }
+        *nodes += 1ULL;
+    } else {
+        int count = generate_moves(move_list);
 
-    int count = generate_moves(move_list);
-
-    for (int i = 0; i < count; i++) {
-        move_piece(&move_list[i]);
-        if (!in_check()) {
-            nodes += perft(depth - 1);
+        for (int i = 0; i < count; i++) {
+            move_piece(&move_list[i]);
+            if (!in_check()) {
+                perft(depth - 1, nodes);
+            }
+            unmove_piece();
         }
-        unmove_piece();
     }
-    return nodes;
 }
 
 /* Performance test for enumerating mostly legal moves to a certain depth */
-U64 speedy_perft(int depth) {
+static inline void speedy_perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
-    U64 nodes = 0;
     int count = generate_moves(move_list);
 
     if (depth == 1) {
-        return (U64)count;
-    }
-
-    for (int i = 0; i < count; i++) {
-        move_piece(&move_list[i]);
-        if (!in_check()) {
-            nodes += speedy_perft(depth - 1);
+        *nodes += (U64)count;
+    } else {
+        for (int i = 0; i < count; i++) {
+            move_piece(&move_list[i]);
+            if (!in_check()) {
+                speedy_perft(depth - 1, nodes);
+            }
+            unmove_piece();
         }
-        unmove_piece();
     }
-    return nodes;
 }
 
 /* Performance test for enumerating all pseudo legal moves to a certain depth */
-U64 pseudo_perft(int depth) {
+static inline void pseudo_perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
-    U64 nodes = 0;
     int count = generate_moves(move_list);
 
     if (depth == 1) {
-        return (U64)count;
+        *nodes += (U64)count;
+    } else {
+        for (int i = 0; i < count; i++) {
+            move_piece(&move_list[i]);
+            pseudo_perft(depth - 1, nodes);
+            unmove_piece();
+        }
+    }
+}
+
+static inline U64 loop_speed(int depth) {
+    for (U64 i = 0; i < (U64)(depth * 100000000); i++) {
+        ;
     }
 
-    for (int i = 0; i < count; i++) {
-        move_piece(&move_list[i]);
-        nodes += pseudo_perft(depth - 1);
-        unmove_piece();
-    }
-    return nodes;
+    return depth * 100000000;
 }
 
 /* Computes time to complete task */
 void benchmark(int depth) {
-    U64 nodes;
+    U64 nodes = 0;
     double time;
     clock_t begin_time, end_time;
 
     start_board();
 
     begin_time = clock();
-    nodes = pseudo_perft(depth);
+    perft(depth, &nodes);
     end_time = clock();
     time = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
 
