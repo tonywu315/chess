@@ -66,6 +66,7 @@ static inline void pseudo_perft(int depth, U64 *nodes) {
     }
 }
 
+/* Tests speed to loop through depth * 100 million times */
 static inline U64 loop_speed(int depth) {
     for (U64 i = 0; i < (U64)(depth * 100000000); i++) {
         ;

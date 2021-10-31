@@ -1,4 +1,5 @@
 #include "board.h"
+#include "evaluation.h"
 
 /* Returns true if square is outside the board */
 inline int invalid_square(Fast square) { return square & 0x88; }
@@ -101,5 +102,6 @@ void print_board() {
         }
     }
 
-    printf("\nPlayer to move: %s\n", players[(int)board.player]);
+    printf("\nEvaluation: %d\n", eval(board));
+    printf("Player to move: %s\n", players[(int)board.player]);
 }
