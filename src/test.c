@@ -78,7 +78,7 @@ void two_player() {
 int main() {
     root_pos = 0, search_pos = 0;
 
-    benchmark(6);
+    two_player();
 
     return SUCCESS;
 }
