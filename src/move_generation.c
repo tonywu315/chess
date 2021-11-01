@@ -19,8 +19,9 @@ Move create_move(Fast start, Fast end, Fast flag) {
     Move move;
     move.start = start;
     move.end = end;
-    move.flag = flag;
     move.captured = EMPTY_PIECE;
+    move.flag = flag;
+    move.castle = board.castle;
     move.enpassant = board.enpassant;
     move.ply = board.ply;
 

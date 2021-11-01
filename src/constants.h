@@ -38,6 +38,7 @@ typedef struct move {
     Fast end;
     Fast captured;
     Fast flag;
+    Fast castle;
     Fast enpassant;
     Fast ply;
 } Move;
