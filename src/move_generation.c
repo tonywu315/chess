@@ -33,20 +33,25 @@ Move create_move(Fast start, Fast end, Fast flag) {
 
 /* Checks if player is attacking square */
 int is_attacking(Fast square, Fast player) {
+    /* Returns false if square is invalid */
+    if (invalid_square(square)) {
+        return false;
+    }
+
     /* Checks if pawn is attacking */
     int back = player == WHITE ? DOWN : UP;
-    if ((!invalid_square(square) &&
+    if ((!invalid_square(square + back + RIGHT) &&
          exists(square + back + RIGHT, player, PAWN)) ||
-        (!invalid_square(square) &&
+        (!invalid_square(square + back + LEFT) &&
          exists(square + back + LEFT, player, PAWN))) {
         return true;
     }
 
     for (int i = 0; i < 8; i++) {
         /* Checks if knight or king is attacking */
-        if ((!invalid_square(square) &&
+        if ((!invalid_square(square + vectors[KNIGHT - 2][i]) &&
              exists(square + vectors[KNIGHT - 2][i], player, KNIGHT)) ||
-            (!invalid_square(square) &&
+            (!invalid_square(square + vectors[KING - 2][i]) &&
              exists(square + vectors[KING - 2][i], player, KING))) {
             return true;
         }
