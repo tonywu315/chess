@@ -20,19 +20,27 @@ void move_piece(Move *move) {
     /* Updates board */
     update_piece(move->start, move->end);
 
-    /* Moving rook removes castle option for that side */
+    /* Moving king or rook removes castle option for that side */
     switch (move->start) {
+    case E1:
+        board.castle &= 15 - CASTLE_WK;
+        board.castle &= 15 - CASTLE_WQ;
+        break;
+    case E8:
+        board.castle &= 15 - CASTLE_BK;
+        board.castle &= 15 - CASTLE_BQ;
+        break;
     case H1:
-        board.castle -= CASTLE_WK;
+        board.castle &= 15 - CASTLE_WK;
         break;
     case A1:
-        board.castle -= CASTLE_WQ;
+        board.castle &= 15 - CASTLE_WQ;
         break;
     case H8:
-        board.castle -= CASTLE_BK;
+        board.castle &= 15 - CASTLE_BK;
         break;
     case A8:
-        board.castle -= CASTLE_BQ;
+        board.castle &= 15 - CASTLE_BQ;
         break;
     }
 
@@ -48,19 +56,19 @@ void move_piece(Move *move) {
         break;
     case CASTLE_WK:
         update_piece(H1, F1);
-        board.castle -= CASTLE_WK;
+        board.castle &= 15 - CASTLE_WK;
         break;
     case CASTLE_WQ:
         update_piece(A1, D1);
-        board.castle -= CASTLE_WQ;
+        board.castle &= 15 - CASTLE_WQ;
         break;
     case CASTLE_BK:
         update_piece(H8, F8);
-        board.castle -= CASTLE_BK;
+        board.castle &= 15 - CASTLE_BK;
         break;
     case CASTLE_BQ:
         update_piece(A8, D8);
-        board.castle -= CASTLE_BQ;
+        board.castle &= 15 - CASTLE_BQ;
         break;
     case PROMOTION_N:
         board.pieces[move->end] = KNIGHT;
@@ -113,23 +121,47 @@ void unmove_piece() {
         board.pieces[square] = PAWN;
     }
 
+    /* Adds castle privileges */
+    switch (move->start) {
+    case E1:
+        board.castle |= CASTLE_WK;
+        board.castle |= CASTLE_WQ;
+        break;
+    case E8:
+        board.castle |= CASTLE_BK;
+        board.castle |= CASTLE_BQ;
+        break;
+    case H1:
+        board.castle |= CASTLE_WK;
+        break;
+    case A1:
+        board.castle |= CASTLE_WQ;
+        break;
+    case H8:
+        board.castle |= CASTLE_BK;
+        break;
+    case A8:
+        board.castle |= CASTLE_BQ;
+        break;
+    }
+
     /* Additional moves based on flag */
     switch (move->flag) {
     case CASTLE_WK:
         update_piece(F1, H1);
-        board.castle += CASTLE_WK;
+        board.castle |= CASTLE_WK;
         break;
     case CASTLE_WQ:
         update_piece(D1, A1);
-        board.castle += CASTLE_WQ;
+        board.castle |= CASTLE_WQ;
         break;
     case CASTLE_BK:
         update_piece(F8, H8);
-        board.castle += CASTLE_BK;
+        board.castle |= CASTLE_BK;
         break;
     case CASTLE_BQ:
         update_piece(D8, A8);
-        board.castle += CASTLE_BQ;
+        board.castle |= CASTLE_BQ;
         break;
     case PROMOTION_N:
     case PROMOTION_B:
