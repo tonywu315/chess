@@ -2,21 +2,38 @@
 #include "board.h"
 #include "move.h"
 #include "move_generation.h"
+#include "search.h"
+#include "evaluation.h"
 
 Board board;
 Move game_moves[MAX_GAME_LENTH];
 int root_pos;
 int search_pos;
 
-/* Simple 2 player chess program */
-void two_player() {
+/* Makes computer move if not single player and prints board */
+static void next(bool singleplayer) {
+    int score;
+
+    if (singleplayer) {
+        score = eval();
+    } else {
+        Line mainline;
+        score = alpha_beta(-INT_MAX, INT_MAX, 6, &mainline);
+        move_piece(&mainline.moves[0]);
+    }
+
+    print_board(-score);
+}
+
+/* Start chess engine */
+void start_game(bool singleplayer) {
     char move[5] = {0};
     int one, two, three, four, five;
 
     start_board();
 
     printf("=== Chess Program ===\n");
-    print_board();
+    print_board(0);
 
     while (true) {
         printf("Move: ");
@@ -47,16 +64,16 @@ void two_player() {
 
         if (!strcmp(move, "undo") && search_pos) {
             unmove_piece();
-            print_board();
+            next(singleplayer);
         } else if (!strcmp(move, "0-0")) {
             if ((board.player == WHITE && !move_legal(E1, G1, false)) ||
                 (board.player == BLACK && !move_legal(E8, G8, false))) {
-                print_board();
+                next(singleplayer);
             }
         } else if (!strcmp(move, "0-0-0")) {
             if ((board.player == WHITE && !move_legal(E1, C1, false)) ||
                 (board.player == BLACK && !move_legal(E8, C8, false))) {
-                print_board();
+                next(singleplayer);
             }
         } else if (one >= 0 && two >= 0 && three >= 0 && four >= 0 &&
                    one <= 7 && two <= 7 && three <= 7 && four <= 7) {
@@ -65,10 +82,10 @@ void two_player() {
 
             if (two == square && board.pieces[start] == PAWN) {
                 if (five && !move_legal(start, end, five)) {
-                    print_board();
+                    next(singleplayer);
                 }
             } else if (!move_legal(start, end, false)) {
-                print_board();
+                next(singleplayer);
             }
         }
     }
@@ -78,7 +95,7 @@ void two_player() {
 int main() {
     root_pos = 0, search_pos = 0;
 
-    two_player();
+    start_game(false);
 
     return SUCCESS;
 }

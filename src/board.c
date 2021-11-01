@@ -1,5 +1,4 @@
 #include "board.h"
-#include "evaluation.h"
 
 /* Returns true if square is outside the board */
 inline int invalid_square(Fast square) { return square & 0x88; }
@@ -75,7 +74,7 @@ void start_board() {
 }
 
 /* Prints board in simple text format */
-void print_board() {
+void print_board(int score) {
     char text[3][7] = {{' ', ' ', ' ', ' ', ' ', ' ', ' '},
                        {' ', 'P', 'N', 'B', 'R', 'Q', 'K'},
                        {' ', 'p', 'n', 'b', 'r', 'q', 'k'}};
@@ -102,6 +101,6 @@ void print_board() {
         }
     }
 
-    printf("\nEvaluation: %d\n", eval(board));
+    printf("\nEvaluation: %d\n", score);
     printf("Player to move: %s\n", players[(int)board.player]);
 }

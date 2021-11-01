@@ -2,6 +2,7 @@
 #define CONSTANTS_H
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 
+#define MAX_PLY 64
 #define MAX_MOVES 256
 #define MAX_GAME_LENTH 1024
 #define ARRAY_SIZE 128
@@ -43,6 +45,11 @@ typedef struct move {
 extern Move game_moves[MAX_GAME_LENTH]; /* May need to reallocate rarely */
 extern int root_pos;
 extern int search_pos;
+
+typedef struct line {
+    int length;
+    Move moves[MAX_PLY];
+} Line;
 
 enum square {
     A1 = 0  , B1, C1, D1, E1, F1, G1, H1,

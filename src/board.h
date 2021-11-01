@@ -8,6 +8,6 @@ int get_rank(Fast square);
 int get_file(Fast square);
 void init_board();
 void start_board();
-void print_board();
+void print_board(int score);
 
 #endif
