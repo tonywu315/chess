@@ -155,9 +155,9 @@ int move_legal(U8 start, U8 end, U8 promotion) {
         return FAILURE;
     }
 
-    /* Generate pseudo legal moves */
+    /* Generate legal moves */
     Move moves[MAX_MOVES];
-    int count = generate_moves(moves);
+    int count = generate_legal_moves(moves);
 
     /* NOTE: Could change moves from array to hashset later, but this code is
     for checking if player moves are legal, so performance is not critical */
@@ -167,10 +167,6 @@ int move_legal(U8 start, U8 end, U8 promotion) {
         if (moves[i].start == start && moves[i].end == end &&
             (!promotion || moves[i].flag == promotion)) {
             move_piece(&moves[i]);
-            if (in_check()) {
-                unmove_piece();
-                return FAILURE;
-            }
             return SUCCESS;
         }
     }

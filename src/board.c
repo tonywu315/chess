@@ -112,6 +112,204 @@ void print_board(int score) {
     printf("Player to move: %s\n", players[(int)board.player]);
 }
 
+/* Creates pawn move */
+static inline void create_pawn_move(Move *move, const char *san, U8 player) {
+    int flag, up;
+    char rank, mid, end;
+
+    if (player == WHITE) {
+        up = 1;
+        mid = '4';
+        end = '8';
+    } else {
+        up = -1;
+        mid = '5';
+        end = '1';
+    }
+    if (san[1] == 'x') {
+        flag = CAPTURE;
+        rank = san[2];
+    } else {
+        flag = NORMAL;
+        rank = san[0];
+    }
+
+    /* Promotion */
+    if ((flag && san[3] == end) || (!flag && san[1] == end)) {
+        switch (san[rank + 3]) {
+        case 'N':
+            create_move(move, get_index(san[0], end - up), get_index(rank, end),
+                        PROMOTION_N);
+            break;
+        case 'B':
+            create_move(move, get_index(san[0], end - up), get_index(rank, end),
+                        PROMOTION_B);
+            break;
+        case 'R':
+            create_move(move, get_index(san[0], end - up), get_index(rank, end),
+                        PROMOTION_R);
+            break;
+        case 'Q':
+            create_move(move, get_index(san[0], end - up), get_index(rank, end),
+                        PROMOTION_Q);
+            break;
+        }
+    } else if (flag) {
+        /* Capture */
+        create_move(move, get_index(san[0], san[3] - up),
+                    get_index(rank, san[3]), flag);
+    } else if (san[1] == mid) {
+        /* Double pawn move */
+        int start = get_index(san[0], mid - up - up);
+        int next = get_index(san[0], mid - up);
+        if (!board.colors[next] && board.colors[start] == player &&
+            board.pieces[start] == PAWN) {
+            create_move(move, start, get_index(rank, san[1]), ENPASSANT);
+        }
+    } else {
+        /* Single pawn move */
+        int start = get_index(san[0], mid - up - up);
+        if (board.colors[start] == player && board.pieces[start] == PAWN) {
+            create_move(move, start, get_index(rank, san[1]), flag);
+        }
+    }
+}
+
+/* TODO: use regex to validate SAN */
+/* Converts standard algebraic notation to move */
+void san_to_move(Move *move, const char *san, U8 player) {
+    int length = strlen(san);
+
+    if (san[length - 1] == '+' || san[length - 1] == '#') {
+        length--;
+    }
+
+    /* Castling moves */
+    if (player == WHITE) {
+        if (length >= 3 && !strncmp(san, "O-O", 3)) {
+            create_move(move, E1, G1, CASTLE_WK);
+            return;
+        } else if (length >= 5 && !strncmp(san, "O-O-O", 5)) {
+            create_move(move, E1, A1, CASTLE_WQ);
+            return;
+        }
+    } else {
+        if (length >= 3 && !strncmp(san, "O-O", 3)) {
+            create_move(move, E8, G8, CASTLE_BK);
+            return;
+        } else if (length >= 5 && !strncmp(san, "O-O-O", 5)) {
+            create_move(move, E8, A8, CASTLE_BQ);
+            return;
+        }
+    }
+
+    /* Pawn move */
+    if (islower(san[0])) {
+        create_pawn_move(move, san, player);
+    } else {
+        U8 piece, end = get_index(san[length - 2], san[length - 1]);
+        Move moves[MAX_MOVES];
+        int i = 0, count = generate_legal_moves(moves);
+
+        switch (san[0]) {
+        case 'N':
+        case 'n':
+            piece = KNIGHT;
+            break;
+        case 'B':
+        case 'b':
+            piece = BISHOP;
+            break;
+        case 'R':
+        case 'r':
+            piece = ROOK;
+            break;
+        case 'Q':
+        case 'q':
+            piece = QUEEN;
+            break;
+        case 'K':
+        case 'k':
+            piece = KING;
+            break;
+        }
+
+        if (length == 3) {
+            for (i = 0; i < count; i++) {
+                if (board.colors[moves[i].start] == player &&
+                    board.pieces[moves[i].start] == piece &&
+                    moves[i].end == end) {
+                    create_move(move, moves[i].start, end, NORMAL);
+                }
+            }
+        } else if (length == 4) {
+            if (san[1] == 'x') {
+                for (i = 0; i < count; i++) {
+                    if (board.colors[moves[i].start] == player &&
+                        board.pieces[moves[i].start] == piece &&
+                        moves[i].end == end) {
+                        create_move(move, moves[i].start, end, CAPTURE);
+                    }
+                }
+            } else {
+                if (san[1] >= 'a' && san[1] <= 'h') {
+                    for (i = 0; i < count; i++) {
+                        if (board.colors[moves[i].start] == player &&
+                            board.pieces[moves[i].start] == piece &&
+                            get_file(moves[i].start) == san[1] &&
+                            moves[i].end == end) {
+                            create_move(move, moves[i].start, end, NORMAL);
+                        }
+                    }
+                } else {
+                    for (i = 0; i < count; i++) {
+                        if (board.colors[moves[i].start] == player &&
+                            board.pieces[moves[i].start] == piece &&
+                            get_rank(moves[i].start) == san[1] &&
+                            moves[i].end == end) {
+                            create_move(move, moves[i].start, end, NORMAL);
+                        }
+                    }
+                }
+            }
+        } else if (length == 5) {
+            if (san[2] == 'x') {
+                if (san[1] >= 'a' && san[1] <= 'h') {
+                    for (i = 0; i < count; i++) {
+                        if (board.colors[moves[i].start] == player &&
+                            board.pieces[moves[i].start] == piece &&
+                            get_file(moves[i].start) == san[1] &&
+                            moves[i].end == end) {
+                            create_move(move, moves[i].start, end, CAPTURE);
+                        }
+                    }
+                } else {
+                    for (i = 0; i < count; i++) {
+                        if (board.colors[moves[i].start] == player &&
+                            board.pieces[moves[i].start] == piece &&
+                            get_rank(moves[i].start) == san[1] &&
+                            moves[i].end == end) {
+                            create_move(move, moves[i].start, end, CAPTURE);
+                        }
+                    }
+                }
+            } else {
+                create_move(move, get_index(san[1], san[2]), end, NORMAL);
+            }
+        } else {
+            create_move(move, get_index(san[1], san[2]), end, NORMAL);
+        }
+    }
+}
+
+/* Converts move to standard algebraic notation
+void move_to_san(char *san, const Move *move, U8 player) {}
+*/
+
+/* Loads a game from PGN representation
+void load_pgn(const char *fen) {}
+*/
+
 /* Loads a board from FEN representation */
 void load_fen(const char *fen) {
     int i = 0, j = A8;

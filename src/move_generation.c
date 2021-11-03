@@ -150,6 +150,22 @@ int generate_moves(Move *moves) {
     return count;
 }
 
+/* Generates legal moves (TODO: make more efficient) */
+int generate_legal_moves(Move *moves) {
+    Move pseudo_moves[MAX_MOVES];
+    int count = 0, pseudo_count = generate_moves(pseudo_moves);
+
+    for (int i = 0; i < pseudo_count; i++) {
+        move_piece(&pseudo_moves[i]);
+        if (!in_check()) {
+            moves[count++] = pseudo_moves[i];
+        }
+        unmove_piece();
+    }
+
+    return count;
+}
+
 /* Generate pawn moves */
 static int generate_pawn_move(Move *moves, int count, U8 start) {
     Move move;

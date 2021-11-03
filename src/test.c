@@ -96,5 +96,30 @@ int main() {
     load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     print_board(eval());
 
+    /* TODO: implement PGN load */
+    Move move;
+    san_to_move(&move, "e4", WHITE);
+    move_piece(&move);
+    san_to_move(&move, "e5", BLACK);
+    move_piece(&move);
+    san_to_move(&move, "Nf3", WHITE);
+    move_piece(&move);
+    san_to_move(&move, "Nc6", BLACK);
+    move_piece(&move);
+    san_to_move(&move, "Bb5", WHITE);
+    move_piece(&move);
+    san_to_move(&move, "a6", BLACK);
+    move_piece(&move);
+    san_to_move(&move, "Ba4", WHITE);
+    move_piece(&move);
+    san_to_move(&move, "Nf6", BLACK);
+    move_piece(&move);
+    san_to_move(&move, "O-O", WHITE);
+    move_piece(&move);
+    san_to_move(&move, "Be7", BLACK);
+    move_piece(&move);
+
+    print_board(eval());
+
     return SUCCESS;
 }
