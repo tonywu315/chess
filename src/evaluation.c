@@ -68,7 +68,7 @@ static const int position[7][128] = {
 int eval() {
     int centipawn = 0;
 
-    for (Fast i = A1; i <= H8; i++) {
+    for (U8 i = A1; i <= H8; i++) {
         if (board.colors[i] == WHITE) {
             centipawn += value[board.pieces[i]] + position[board.pieces[i]][i];
         } else if (board.colors[i] == BLACK) {

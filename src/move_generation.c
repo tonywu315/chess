@@ -10,29 +10,27 @@ static const char vectors[5][8] = {
     {UPRIGHT, UP, UPLEFT, RIGHT, LEFT, DOWNRIGHT, DOWN, DOWNLEFT},
 };
 
-static int generate_pawn_move(Move *moves, int count, Fast start);
-static int generate_piece_move(Move *moves, int count, Fast start, Fast piece);
-static inline int exists(Fast square, Fast player, Fast piece);
+static int generate_pawn_move(Move *moves, int count, U8 start);
+static int generate_piece_move(Move *moves, int count, U8 start, U8 piece);
+static inline int exists(U8 square, U8 player, U8 piece);
 
 /* Creates a move with move information and current board information */
-Move create_move(Fast start, Fast end, Fast flag) {
-    Move move;
-    move.start = start;
-    move.end = end;
-    move.flag = flag;
-    move.captured = EMPTY_PIECE;
-    move.enpassant = board.enpassant;
-    move.ply = board.ply;
+void create_move(Move *move, U8 start, U8 end, U8 flag) {
+    move->start = start;
+    move->end = end;
+    move->captured = EMPTY_PIECE;
+    move->flag = flag;
+    move->castle = board.castle;
+    move->enpassant = board.enpassant;
+    move->ply = board.ply;
 
-    if (board.colors[move.end] == 3 - board.player) {
-        move.captured = board.pieces[move.end];
+    if (board.colors[move->end] == 3 - board.player) {
+        move->captured = board.pieces[move->end];
     }
-
-    return move;
 }
 
 /* Checks if player is attacking square */
-int is_attacking(Fast square, Fast player) {
+int is_attacking(U8 square, U8 player) {
     /* Returns false if square is invalid */
     if (invalid_square(square)) {
         return false;
@@ -57,7 +55,7 @@ int is_attacking(Fast square, Fast player) {
         }
 
         /* Checks if queen is attacking */
-        for (Fast end = square + vectors[QUEEN - 2][i]; !invalid_square(end);
+        for (U8 end = square + vectors[QUEEN - 2][i]; !invalid_square(end);
              end += vectors[QUEEN - 2][i]) {
             if (exists(end, player, QUEEN)) {
                 return true;
@@ -70,7 +68,7 @@ int is_attacking(Fast square, Fast player) {
 
     /* Checks if rook or bishop are attacking */
     for (int i = 0; i < 4; i++) {
-        for (Fast end = square + vectors[ROOK - 2][i]; !invalid_square(end);
+        for (U8 end = square + vectors[ROOK - 2][i]; !invalid_square(end);
              end += vectors[ROOK - 2][i]) {
             if (exists(end, player, ROOK)) {
                 return true;
@@ -79,7 +77,7 @@ int is_attacking(Fast square, Fast player) {
                 break;
             }
         }
-        for (Fast end = square + vectors[BISHOP - 2][i]; !invalid_square(end);
+        for (U8 end = square + vectors[BISHOP - 2][i]; !invalid_square(end);
              end += vectors[BISHOP - 2][i]) {
             if (exists(end, player, BISHOP)) {
                 return true;
@@ -100,7 +98,8 @@ int in_check() {
 
 /* Generates pseudo-legal moves (checks are not considered) */
 int generate_moves(Move *moves) {
-    Fast enemy = 3 - board.player;
+    Move move;
+    U8 enemy = 3 - board.player;
     int count = 0;
 
     /* Checks castle conditions for all 4 possible castling moves */
@@ -108,34 +107,38 @@ int generate_moves(Move *moves) {
         if (board.castle & CASTLE_WK && board.pieces[F1] == EMPTY_PIECE &&
             board.pieces[G1] == EMPTY_PIECE && !is_attacking(E1, enemy) &&
             !is_attacking(F1, enemy) && !is_attacking(G1, enemy)) {
-            moves[count++] = create_move(E1, G1, CASTLE_WK);
+            create_move(&move, E1, G1, CASTLE_WK);
+            moves[count++] = move;
         }
         if (board.castle & CASTLE_WQ && board.pieces[D1] == EMPTY_PIECE &&
             board.pieces[C1] == EMPTY_PIECE &&
             board.pieces[B1] == EMPTY_PIECE && !is_attacking(E1, enemy) &&
             !is_attacking(D1, enemy) && !is_attacking(C1, enemy)) {
-            moves[count++] = create_move(E1, C1, CASTLE_WQ);
+            create_move(&move, E1, C1, CASTLE_WQ);
+            moves[count++] = move;
         }
     } else {
         if (board.castle & CASTLE_BK && board.pieces[F8] == EMPTY_PIECE &&
             board.pieces[G8] == EMPTY_PIECE && !is_attacking(E8, enemy) &&
             !is_attacking(F8, enemy) && !is_attacking(G8, enemy)) {
-            moves[count++] = create_move(E8, G8, CASTLE_BK);
+            create_move(&move, E8, G8, CASTLE_BK);
+            moves[count++] = move;
         }
         if (board.castle & CASTLE_BQ && board.pieces[D8] == EMPTY_PIECE &&
             board.pieces[C8] == EMPTY_PIECE &&
             board.pieces[B8] == EMPTY_PIECE && !is_attacking(E8, enemy) &&
             !is_attacking(D8, enemy) && !is_attacking(C8, enemy)) {
-            moves[count++] = create_move(E8, C8, CASTLE_BQ);
+            create_move(&move, E8, C8, CASTLE_BQ);
+            moves[count++] = move;
         }
     }
 
     /* Iterates over all coordinates */
-    for (Fast start = A1; start <= H8; start++) {
+    for (U8 start = A1; start <= H8; start++) {
         /* Only generates moves for the player to move */
         if (board.colors[start] == board.player) {
             /* Generates moves for each piece type */
-            Fast piece = board.pieces[start];
+            U8 piece = board.pieces[start];
             if (piece == PAWN) {
                 count = generate_pawn_move(moves, count, start);
             } else {
@@ -147,8 +150,26 @@ int generate_moves(Move *moves) {
     return count;
 }
 
+/* Generates legal moves (TODO: make more efficient) */
+int generate_legal_moves(Move *moves) {
+    Move pseudo_moves[MAX_MOVES];
+    int count = 0, pseudo_count = generate_moves(pseudo_moves);
+
+    for (int i = 0; i < pseudo_count; i++) {
+        move_piece(&pseudo_moves[i]);
+        if (!in_check()) {
+            moves[count++] = pseudo_moves[i];
+        }
+        unmove_piece();
+    }
+
+    return count;
+}
+
 /* Generate pawn moves */
-static int generate_pawn_move(Move *moves, int count, Fast start) {
+static int generate_pawn_move(Move *moves, int count, U8 start) {
+    Move move;
+
     /* Pawn direction and second square depend on color */
     int direction = UP, second = 1;
     if (board.player == BLACK) {
@@ -156,36 +177,42 @@ static int generate_pawn_move(Move *moves, int count, Fast start) {
     }
 
     /* Checks that the next square is empty */
-    Fast end = start + direction;
+    U8 end = start + direction;
     if (!board.colors[end]) {
         /* Adds all promotion moves */
         if (get_rank(start) == 7 - second) {
             for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                moves[count++] = create_move(start, end, i);
+                create_move(&move, start, end, i);
+                moves[count++] = move;
             }
         } else {
             /* Adds move and double move if on special rank */
-            moves[count++] = create_move(start, end, NORMAL);
+            create_move(&move, start, end, NORMAL);
+            moves[count++] = move;
             if (get_rank(start) == second && !board.colors[end + direction]) {
-                moves[count++] = create_move(start, end + direction, DOUBLE);
+                create_move(&move, start, end + direction, DOUBLE);
+                moves[count++] = move;
             }
         }
     }
 
     /* Adds pawn attacks to the right and left and en passant */
-    Fast attack = end + RIGHT;
+    U8 attack = end + RIGHT;
     if (!invalid_square(attack) && board.colors[attack] != board.player) {
         if (board.colors[attack] != EMPTY_COLOR) {
             /* Adds promotion capture moves */
             if (get_rank(start) == 7 - second) {
                 for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    moves[count++] = create_move(start, attack, i);
+                    create_move(&move, start, attack, i);
+                    moves[count++] = move;
                 }
             } else {
-                moves[count++] = create_move(start, attack, CAPTURE);
+                create_move(&move, start, attack, CAPTURE);
+                moves[count++] = move;
             }
         } else if (attack == board.enpassant) {
-            moves[count++] = create_move(start, attack, ENPASSANT);
+            create_move(&move, start, attack, ENPASSANT);
+            moves[count++] = move;
         }
     }
     attack = end + LEFT;
@@ -194,13 +221,16 @@ static int generate_pawn_move(Move *moves, int count, Fast start) {
             /* Adds promotion capture moves */
             if (get_rank(start) == 7 - second) {
                 for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    moves[count++] = create_move(start, attack, i);
+                    create_move(&move, start, attack, i);
+                    moves[count++] = move;
                 }
             } else {
-                moves[count++] = create_move(start, attack, CAPTURE);
+                create_move(&move, start, attack, CAPTURE);
+                moves[count++] = move;
             }
         } else if (attack == board.enpassant) {
-            moves[count++] = create_move(start, attack, ENPASSANT);
+            create_move(&move, start, attack, ENPASSANT);
+            moves[count++] = move;
         }
     }
 
@@ -208,17 +238,21 @@ static int generate_pawn_move(Move *moves, int count, Fast start) {
 }
 
 /* Generate moves for other pieces */
-static int generate_piece_move(Move *moves, int count, Fast start, Fast piece) {
+static int generate_piece_move(Move *moves, int count, U8 start, U8 piece) {
+    Move move;
+
     /* Iterate over all directions*/
     if (piece == KNIGHT || piece == KING) {
         for (int i = 0; i < 8; i++) {
             /* Adds normal move or capture move */
-            Fast end = start + vectors[piece - 2][i];
+            U8 end = start + vectors[piece - 2][i];
             if (!invalid_square(end)) {
                 if (board.colors[end] == EMPTY_COLOR) {
-                    moves[count++] = create_move(start, end, NORMAL);
+                    create_move(&move, start, end, NORMAL);
+                    moves[count++] = move;
                 } else if (board.colors[end] == 3 - board.player) {
-                    moves[count++] = create_move(start, end, CAPTURE);
+                    create_move(&move, start, end, CAPTURE);
+                    moves[count++] = move;
                 }
             }
         }
@@ -229,13 +263,15 @@ static int generate_piece_move(Move *moves, int count, Fast start, Fast piece) {
             directions = 4;
         }
         for (int i = 0; i < directions; i++) {
-            for (Fast end = start + vectors[piece - 2][i]; !invalid_square(end);
+            for (U8 end = start + vectors[piece - 2][i]; !invalid_square(end);
                  end += vectors[piece - 2][i]) {
                 /* Adds normal move or capture move */
                 if (board.colors[end] == EMPTY_COLOR) {
-                    moves[count++] = create_move(start, end, NORMAL);
+                    create_move(&move, start, end, NORMAL);
+                    moves[count++] = move;
                 } else if (board.colors[end] == 3 - board.player) {
-                    moves[count++] = create_move(start, end, CAPTURE);
+                    create_move(&move, start, end, CAPTURE);
+                    moves[count++] = move;
                 }
                 /* Stops traversal once a piece is hit*/
                 if (board.colors[end]) {
@@ -249,6 +285,6 @@ static int generate_piece_move(Move *moves, int count, Fast start, Fast piece) {
 }
 
 /* Checks if a certain player has a certain piece at square */
-static inline int exists(Fast square, Fast player, Fast piece) {
+static inline int exists(U8 square, U8 player, U8 piece) {
     return board.pieces[square] == piece && board.colors[square] == player;
 }
