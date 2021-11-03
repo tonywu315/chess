@@ -8,8 +8,8 @@ typedef unsigned long long U64;
 /*
 CURRENT PERFORMANCE FOR DEPTH 6
 perft:          2.658 MNPS
-speedy_perft:   16.974 MNPS
-pseudo_perft:   21.696 MNPS
+speedy_perft:   17.354 MNPS
+pseudo_perft:   21.980 MNPS
 loop_speed:     609.352 MNPS
 */
 

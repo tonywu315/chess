@@ -21,7 +21,7 @@ int alpha_beta(int alpha, int beta, int depth, Line *mainline) {
         move_piece(&move_list[i]);
 
         /* Removes illegal moves */
-        if (!in_check()) {
+        if (in_check()) {
             unmove_piece();
             continue;
         }
