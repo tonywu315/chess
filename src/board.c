@@ -1,11 +1,12 @@
 #include "board.h"
+#include "move_generation.h"
 
 /* Returns true if square is outside the board */
-inline int invalid_square(Fast square) { return square & 0x88; }
+inline int invalid_square(U8 square) { return square & 0x88; }
 
 /* Returns rank and file of square (number from 0 to 7) */
-inline int get_rank(Fast square) { return square >> 4; }
-inline int get_file(Fast square) { return square & 7; }
+inline int get_rank(U8 square) { return square >> 4; }
+inline int get_file(U8 square) { return square & 7; }
 
 /* Initializes empty board */
 void init_board() {
@@ -72,6 +73,38 @@ void start_board() {
     for (int i = A8; i <= H8; i++) {
         board.colors[i] = BLACK;
     }
+}
+
+/* Prints board in simple text format */
+void print_board(int score) {
+    char text[3][7] = {{' ', ' ', ' ', ' ', ' ', ' ', ' '},
+                       {' ', 'P', 'N', 'B', 'R', 'Q', 'K'},
+                       {' ', 'p', 'n', 'b', 'r', 'q', 'k'}};
+    char players[3][6] = {"", "White", "Black"};
+
+    printf("\n");
+
+    /* Flips board if player is black */
+    if (board.player == WHITE) {
+        for (int i = 7; i >= 0; i--) {
+            for (int j = 0; j < 8; j++) {
+                int k = i * 16 + j;
+                printf("%c", text[(int)board.colors[k]][(int)board.pieces[k]]);
+            }
+            printf("\n");
+        }
+    } else {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 7; j >= 0; j--) {
+                int k = i * 16 + j;
+                printf("%c", text[(int)board.colors[k]][(int)board.pieces[k]]);
+            }
+            printf("\n");
+        }
+    }
+
+    printf("\nEvaluation: %d\n", score);
+    printf("Player to move: %s\n", players[(int)board.player]);
 }
 
 /* Loads a board from FEN representation */
@@ -177,36 +210,4 @@ void load_fen(const char *fen) {
     }
 
     board.ply = fen[i] - '0';
-}
-
-/* Prints board in simple text format */
-void print_board(int score) {
-    char text[3][7] = {{' ', ' ', ' ', ' ', ' ', ' ', ' '},
-                       {' ', 'P', 'N', 'B', 'R', 'Q', 'K'},
-                       {' ', 'p', 'n', 'b', 'r', 'q', 'k'}};
-    char players[3][6] = {"", "White", "Black"};
-
-    printf("\n");
-
-    /* Flips board if player is black */
-    if (board.player == WHITE) {
-        for (int i = 7; i >= 0; i--) {
-            for (int j = 0; j < 8; j++) {
-                int k = i * 16 + j;
-                printf("%c", text[(int)board.colors[k]][(int)board.pieces[k]]);
-            }
-            printf("\n");
-        }
-    } else {
-        for (int i = 0; i < 8; i++) {
-            for (int j = 7; j >= 0; j--) {
-                int k = i * 16 + j;
-                printf("%c", text[(int)board.colors[k]][(int)board.pieces[k]]);
-            }
-            printf("\n");
-        }
-    }
-
-    printf("\nEvaluation: %d\n", score);
-    printf("Player to move: %s\n", players[(int)board.player]);
 }

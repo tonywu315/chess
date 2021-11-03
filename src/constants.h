@@ -18,29 +18,29 @@
 #define SUCCESS 0
 #define FAILURE 1
 
-typedef uint_fast8_t Fast;
+typedef uint_fast8_t U8;
 
 /* 0x88 Board Representation (16x8 array) */
 typedef struct board {
-    Fast colors[ARRAY_SIZE];
-    Fast pieces[ARRAY_SIZE];
-    Fast player;    /* Player to move */
-    Fast castle;    /* 0-15 number that represents castling availability */
-    Fast enpassant; /* En passant square */
-    Fast ply;       /* Keeps track for 50 move rule */
-    Fast king[2];   /* Location of kings */
+    U8 colors[ARRAY_SIZE];
+    U8 pieces[ARRAY_SIZE];
+    U8 player;    /* Player to move */
+    U8 castle;    /* 0-15 number that represents castling availability */
+    U8 enpassant; /* En passant square */
+    U8 ply;       /* Keeps track for 50 move rule */
+    U8 king[2];   /* Location of kings */
 } Board;
 
 extern Board board;
 
 typedef struct move {
-    Fast start;
-    Fast end;
-    Fast captured;
-    Fast flag;
-    Fast castle;
-    Fast enpassant;
-    Fast ply;
+    U8 start;
+    U8 end;
+    U8 captured;
+    U8 flag;
+    U8 castle;
+    U8 enpassant;
+    U8 ply;
 } Move;
 
 extern Move game_moves[MAX_GAME_LENTH]; /* May need to reallocate rarely */
@@ -95,6 +95,7 @@ enum flag {
     CAPTURE = 3,
     DOUBLE = 5,
     ENPASSANT = 6,
+    NULLMOVE = 7,
     CASTLE_WK = 1,
     CASTLE_WQ = 2,
     CASTLE_BK = 4,

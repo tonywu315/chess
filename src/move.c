@@ -2,7 +2,7 @@
 #include "board.h"
 #include "move_generation.h"
 
-static inline void update_piece(Fast start, Fast end);
+static inline void update_piece(U8 start, U8 end);
 
 /* Changes board based on move (does not check for legality) */
 void move_piece(const Move *move) {
@@ -48,7 +48,7 @@ void move_piece(const Move *move) {
         board.enpassant = (move->start + move->end) / 2;
         break;
     case ENPASSANT:; /* Semicolon is necessary to compile */
-        Fast square = 16 * get_rank(move->start) + get_file(move->end);
+        U8 square = 16 * get_rank(move->start) + get_file(move->end);
         board.colors[square] = EMPTY_COLOR;
         board.pieces[square] = EMPTY_PIECE;
         break;
@@ -145,7 +145,7 @@ void unmove_piece() {
 }
 
 /* Moves piece from start to end if it is legal */
-int move_legal(Fast start, Fast end, Fast promotion) {
+int move_legal(U8 start, U8 end, U8 promotion) {
     /* Start and end must be in the board and be different colors */
     /* Starting square must be the player to move's piece */
     if (invalid_square(start) || invalid_square(end) ||
@@ -178,7 +178,7 @@ int move_legal(Fast start, Fast end, Fast promotion) {
 }
 
 /* Moves piece from start to end and deletes start piece */
-static inline void update_piece(Fast start, Fast end) {
+static inline void update_piece(U8 start, U8 end) {
     board.colors[end] = board.colors[start];
     board.pieces[end] = board.pieces[start];
     board.colors[start] = EMPTY_COLOR;

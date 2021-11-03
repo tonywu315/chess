@@ -65,20 +65,20 @@ void start_game(bool singleplayer) {
         if (!strcmp(move, "undo") && search_pos) {
             unmove_piece();
             next(singleplayer);
-        } else if (!strcmp(move, "0-0")) {
+        } else if (!strcmp(move, "O-O") || !strcmp(move, "0-0")) {
             if ((board.player == WHITE && !move_legal(E1, G1, false)) ||
                 (board.player == BLACK && !move_legal(E8, G8, false))) {
                 next(singleplayer);
             }
-        } else if (!strcmp(move, "0-0-0")) {
+        } else if (!strcmp(move, "O-O-O") || !strcmp(move, "0-0-0")) {
             if ((board.player == WHITE && !move_legal(E1, C1, false)) ||
                 (board.player == BLACK && !move_legal(E8, C8, false))) {
                 next(singleplayer);
             }
         } else if (one >= 0 && two >= 0 && three >= 0 && four >= 0 &&
                    one <= 7 && two <= 7 && three <= 7 && four <= 7) {
-            Fast start = one + two * 16, end = three + four * 16;
-            Fast square = board.player == WHITE ? 6 : 1;
+            U8 start = one + two * 16, end = three + four * 16;
+            U8 square = board.player == WHITE ? 6 : 1;
 
             if (two == square && board.pieces[start] == PAWN) {
                 if (five && !move_legal(start, end, five)) {
