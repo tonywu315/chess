@@ -17,6 +17,8 @@
 #define ALL_CASTLE 15
 #define SUCCESS 0
 #define FAILURE 1
+#define CHECKMATE 2
+#define STALEMATE 1
 
 typedef uint_fast8_t U8;
 
