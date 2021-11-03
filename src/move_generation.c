@@ -15,21 +15,18 @@ static int generate_piece_move(Move *moves, int count, U8 start, U8 piece);
 static inline int exists(U8 square, U8 player, U8 piece);
 
 /* Creates a move with move information and current board information */
-Move create_move(U8 start, U8 end, U8 flag) {
-    Move move;
-    move.start = start;
-    move.end = end;
-    move.captured = EMPTY_PIECE;
-    move.flag = flag;
-    move.castle = board.castle;
-    move.enpassant = board.enpassant;
-    move.ply = board.ply;
+void create_move(Move *move, U8 start, U8 end, U8 flag) {
+    move->start = start;
+    move->end = end;
+    move->captured = EMPTY_PIECE;
+    move->flag = flag;
+    move->castle = board.castle;
+    move->enpassant = board.enpassant;
+    move->ply = board.ply;
 
-    if (board.colors[move.end] == 3 - board.player) {
-        move.captured = board.pieces[move.end];
+    if (board.colors[move->end] == 3 - board.player) {
+        move->captured = board.pieces[move->end];
     }
-
-    return move;
 }
 
 /* Checks if player is attacking square */
@@ -101,6 +98,7 @@ int in_check() {
 
 /* Generates pseudo-legal moves (checks are not considered) */
 int generate_moves(Move *moves) {
+    Move move;
     U8 enemy = 3 - board.player;
     int count = 0;
 
@@ -109,25 +107,29 @@ int generate_moves(Move *moves) {
         if (board.castle & CASTLE_WK && board.pieces[F1] == EMPTY_PIECE &&
             board.pieces[G1] == EMPTY_PIECE && !is_attacking(E1, enemy) &&
             !is_attacking(F1, enemy) && !is_attacking(G1, enemy)) {
-            moves[count++] = create_move(E1, G1, CASTLE_WK);
+            create_move(&move, E1, G1, CASTLE_WK);
+            moves[count++] = move;
         }
         if (board.castle & CASTLE_WQ && board.pieces[D1] == EMPTY_PIECE &&
             board.pieces[C1] == EMPTY_PIECE &&
             board.pieces[B1] == EMPTY_PIECE && !is_attacking(E1, enemy) &&
             !is_attacking(D1, enemy) && !is_attacking(C1, enemy)) {
-            moves[count++] = create_move(E1, C1, CASTLE_WQ);
+            create_move(&move, E1, C1, CASTLE_WQ);
+            moves[count++] = move;
         }
     } else {
         if (board.castle & CASTLE_BK && board.pieces[F8] == EMPTY_PIECE &&
             board.pieces[G8] == EMPTY_PIECE && !is_attacking(E8, enemy) &&
             !is_attacking(F8, enemy) && !is_attacking(G8, enemy)) {
-            moves[count++] = create_move(E8, G8, CASTLE_BK);
+            create_move(&move, E8, G8, CASTLE_BK);
+            moves[count++] = move;
         }
         if (board.castle & CASTLE_BQ && board.pieces[D8] == EMPTY_PIECE &&
             board.pieces[C8] == EMPTY_PIECE &&
             board.pieces[B8] == EMPTY_PIECE && !is_attacking(E8, enemy) &&
             !is_attacking(D8, enemy) && !is_attacking(C8, enemy)) {
-            moves[count++] = create_move(E8, C8, CASTLE_BQ);
+            create_move(&move, E8, C8, CASTLE_BQ);
+            moves[count++] = move;
         }
     }
 
@@ -150,6 +152,8 @@ int generate_moves(Move *moves) {
 
 /* Generate pawn moves */
 static int generate_pawn_move(Move *moves, int count, U8 start) {
+    Move move;
+
     /* Pawn direction and second square depend on color */
     int direction = UP, second = 1;
     if (board.player == BLACK) {
@@ -162,13 +166,16 @@ static int generate_pawn_move(Move *moves, int count, U8 start) {
         /* Adds all promotion moves */
         if (get_rank(start) == 7 - second) {
             for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                moves[count++] = create_move(start, end, i);
+                create_move(&move, start, end, i);
+                moves[count++] = move;
             }
         } else {
             /* Adds move and double move if on special rank */
-            moves[count++] = create_move(start, end, NORMAL);
+            create_move(&move, start, end, NORMAL);
+            moves[count++] = move;
             if (get_rank(start) == second && !board.colors[end + direction]) {
-                moves[count++] = create_move(start, end + direction, DOUBLE);
+                create_move(&move, start, end + direction, DOUBLE);
+                moves[count++] = move;
             }
         }
     }
@@ -180,13 +187,16 @@ static int generate_pawn_move(Move *moves, int count, U8 start) {
             /* Adds promotion capture moves */
             if (get_rank(start) == 7 - second) {
                 for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    moves[count++] = create_move(start, attack, i);
+                    create_move(&move, start, attack, i);
+                    moves[count++] = move;
                 }
             } else {
-                moves[count++] = create_move(start, attack, CAPTURE);
+                create_move(&move, start, attack, CAPTURE);
+                moves[count++] = move;
             }
         } else if (attack == board.enpassant) {
-            moves[count++] = create_move(start, attack, ENPASSANT);
+            create_move(&move, start, attack, ENPASSANT);
+            moves[count++] = move;
         }
     }
     attack = end + LEFT;
@@ -195,13 +205,16 @@ static int generate_pawn_move(Move *moves, int count, U8 start) {
             /* Adds promotion capture moves */
             if (get_rank(start) == 7 - second) {
                 for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    moves[count++] = create_move(start, attack, i);
+                    create_move(&move, start, attack, i);
+                    moves[count++] = move;
                 }
             } else {
-                moves[count++] = create_move(start, attack, CAPTURE);
+                create_move(&move, start, attack, CAPTURE);
+                moves[count++] = move;
             }
         } else if (attack == board.enpassant) {
-            moves[count++] = create_move(start, attack, ENPASSANT);
+            create_move(&move, start, attack, ENPASSANT);
+            moves[count++] = move;
         }
     }
 
@@ -210,6 +223,8 @@ static int generate_pawn_move(Move *moves, int count, U8 start) {
 
 /* Generate moves for other pieces */
 static int generate_piece_move(Move *moves, int count, U8 start, U8 piece) {
+    Move move;
+
     /* Iterate over all directions*/
     if (piece == KNIGHT || piece == KING) {
         for (int i = 0; i < 8; i++) {
@@ -217,9 +232,11 @@ static int generate_piece_move(Move *moves, int count, U8 start, U8 piece) {
             U8 end = start + vectors[piece - 2][i];
             if (!invalid_square(end)) {
                 if (board.colors[end] == EMPTY_COLOR) {
-                    moves[count++] = create_move(start, end, NORMAL);
+                    create_move(&move, start, end, NORMAL);
+                    moves[count++] = move;
                 } else if (board.colors[end] == 3 - board.player) {
-                    moves[count++] = create_move(start, end, CAPTURE);
+                    create_move(&move, start, end, CAPTURE);
+                    moves[count++] = move;
                 }
             }
         }
@@ -234,9 +251,11 @@ static int generate_piece_move(Move *moves, int count, U8 start, U8 piece) {
                  end += vectors[piece - 2][i]) {
                 /* Adds normal move or capture move */
                 if (board.colors[end] == EMPTY_COLOR) {
-                    moves[count++] = create_move(start, end, NORMAL);
+                    create_move(&move, start, end, NORMAL);
+                    moves[count++] = move;
                 } else if (board.colors[end] == 3 - board.player) {
-                    moves[count++] = create_move(start, end, CAPTURE);
+                    create_move(&move, start, end, CAPTURE);
+                    moves[count++] = move;
                 }
                 /* Stops traversal once a piece is hit*/
                 if (board.colors[end]) {

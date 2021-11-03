@@ -6,7 +6,8 @@ static inline void update_piece(U8 start, U8 end);
 
 /* Changes board based on move (does not check for legality) */
 void move_piece(const Move *move) {
-    /* Resets ply if pawn move or capture for 50 move rule */
+    /* Resets ply if pawn move or capture for 50 move rule. Enpassant and
+    promotion captures do not have capture flag, but are covered by pawn move */
     board.ply++;
     if (board.pieces[move->start] == PAWN || move->flag == CAPTURE) {
         board.ply = 0;
@@ -115,6 +116,11 @@ void unmove_piece() {
 
     /* Additional moves based on flag */
     switch (move->flag) {
+    case ENPASSANT:; /* Semicolon is necessary to compile */
+        int square = 16 * get_rank(move->start) + get_file(move->end);
+        board.colors[square] = board.player;
+        board.pieces[square] = PAWN;
+        break;
     case CASTLE_WK:
         update_piece(F1, H1);
         break;
@@ -126,11 +132,6 @@ void unmove_piece() {
         break;
     case CASTLE_BQ:
         update_piece(D8, A8);
-        break;
-    case ENPASSANT:
-        int square = 16 * get_rank(move->start) + get_file(move->end);
-        board.colors[square] = board.player;
-        board.pieces[square] = PAWN;
         break;
     case PROMOTION_N:
     case PROMOTION_B:

@@ -8,6 +8,11 @@ inline int invalid_square(U8 square) { return square & 0x88; }
 inline int get_rank(U8 square) { return square >> 4; }
 inline int get_file(U8 square) { return square & 7; }
 
+/* Returns index in 0x88 board */
+static inline int get_index(char file, char rank) {
+    return 16 * (rank - '1') + file - 'a';
+}
+
 /* Initializes empty board */
 void init_board() {
     for (int i = 0; i < ARRAY_SIZE; i++) {
@@ -205,7 +210,7 @@ void load_fen(const char *fen) {
     if (fen[++i] == '-') {
         i += 2;
     } else {
-        board.enpassant = fen[i]- 'a' + 16 * (fen[i + 1] - '1');
+        board.enpassant = fen[i] - 'a' + 16 * (fen[i + 1] - '1');
         i += 3;
     }
 
