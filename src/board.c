@@ -19,6 +19,7 @@ void init_board() {
     board.enpassant = 255;
     board.ply = 0;
     board.king[WHITE - 1] = 255;
+    board.king[BLACK - 1] = 255;
 
     root_pos = 0;
     search_pos = 0;
@@ -71,6 +72,111 @@ void start_board() {
     for (int i = A8; i <= H8; i++) {
         board.colors[i] = BLACK;
     }
+}
+
+/* Loads a board from FEN representation */
+void load_fen(const char *fen) {
+    int i = 0, j = A8;
+
+    init_board(board);
+
+    /* Adds piece depending on character */
+    do {
+        switch (fen[i]) {
+        case 'P':
+            board.colors[j] = WHITE;
+            board.pieces[j++] = PAWN;
+            break;
+        case 'N':
+            board.colors[j] = WHITE;
+            board.pieces[j++] = KNIGHT;
+            break;
+        case 'B':
+            board.colors[j] = WHITE;
+            board.pieces[j++] = BISHOP;
+            break;
+        case 'R':
+            board.colors[j] = WHITE;
+            board.pieces[j++] = ROOK;
+            break;
+        case 'Q':
+            board.colors[j] = WHITE;
+            board.pieces[j++] = QUEEN;
+            break;
+        case 'K':
+            board.king[WHITE - 1] = j;
+            board.colors[j] = WHITE;
+            board.pieces[j++] = KING;
+            break;
+        case 'p':
+            board.colors[j] = BLACK;
+            board.pieces[j++] = PAWN;
+            break;
+        case 'n':
+            board.colors[j] = BLACK;
+            board.pieces[j++] = KNIGHT;
+            break;
+        case 'b':
+            board.colors[j] = BLACK;
+            board.pieces[j++] = BISHOP;
+            break;
+        case 'r':
+            board.colors[j] = BLACK;
+            board.pieces[j++] = ROOK;
+            break;
+        case 'q':
+            board.colors[j] = BLACK;
+            board.pieces[j++] = QUEEN;
+            break;
+        case 'k':
+            board.king[BLACK - 1] = j;
+            board.colors[j] = BLACK;
+            board.pieces[j++] = KING;
+            break;
+        case '/':
+            j -= 24;
+            break;
+        default:
+            j += fen[i] - '0';
+        }
+    } while (fen[++i] != ' ');
+
+    /* Side to move */
+    if (fen[++i] == 'w') {
+        board.player = WHITE;
+    } else {
+        board.player = BLACK;
+    }
+
+    i += 2;
+
+    /* Castle rights */
+    do {
+        switch (fen[i]) {
+        case 'K':
+            board.castle |= CASTLE_WK;
+            break;
+        case 'Q':
+            board.castle |= CASTLE_WQ;
+            break;
+        case 'k':
+            board.castle |= CASTLE_BK;
+            break;
+        case 'q':
+            board.castle |= CASTLE_BQ;
+            break;
+        }
+    } while (fen[++i] != ' ');
+
+    /* Enpassant square */
+    if (fen[++i] == '-') {
+        i += 2;
+    } else {
+        board.enpassant = fen[i]- 'a' + 16 * (fen[i + 1] - '1');
+        i += 3;
+    }
+
+    board.ply = fen[i] - '0';
 }
 
 /* Prints board in simple text format */

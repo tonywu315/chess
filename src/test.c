@@ -93,9 +93,8 @@ void start_game(bool singleplayer) {
 
 /* Test file for code */
 int main() {
-    root_pos = 0, search_pos = 0;
-
-    start_game(false);
+    load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    print_board(eval());
 
     return SUCCESS;
 }

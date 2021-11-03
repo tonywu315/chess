@@ -5,7 +5,7 @@
 static inline void update_piece(Fast start, Fast end);
 
 /* Changes board based on move (does not check for legality) */
-void move_piece(Move *move) {
+void move_piece(const Move *move) {
     /* Resets ply if pawn move or capture for 50 move rule */
     board.ply++;
     if (board.pieces[move->start] == PAWN || move->flag == CAPTURE) {
@@ -23,22 +23,22 @@ void move_piece(Move *move) {
     /* Moving king or rook removes castle option for that side */
     switch (move->start) {
     case E1:
-        board.castle &= ~(CASTLE_WK | CASTLE_WQ);
+        board.castle &= 15 - CASTLE_WK - CASTLE_WQ;
         break;
     case E8:
-        board.castle &= ~(CASTLE_BK | CASTLE_BQ);
+        board.castle &= 15 - CASTLE_BK - CASTLE_BQ;
         break;
     case H1:
-        board.castle &= ~CASTLE_WK;
+        board.castle &= 15 - CASTLE_WK;
         break;
     case A1:
-        board.castle &= ~CASTLE_WQ;
+        board.castle &= 15 - CASTLE_WQ;
         break;
     case H8:
-        board.castle &= ~CASTLE_BK;
+        board.castle &= 15 - CASTLE_BK;
         break;
     case A8:
-        board.castle &= ~CASTLE_BQ;
+        board.castle &= 15 - CASTLE_BQ;
         break;
     }
 
@@ -54,19 +54,19 @@ void move_piece(Move *move) {
         break;
     case CASTLE_WK:
         update_piece(H1, F1);
-        board.castle &= 15 - CASTLE_WK;
+        board.castle &= 15 - CASTLE_WK - CASTLE_WQ;
         break;
     case CASTLE_WQ:
         update_piece(A1, D1);
-        board.castle &= 15 - CASTLE_WQ;
+        board.castle &= 15 - CASTLE_WK - CASTLE_WQ;
         break;
     case CASTLE_BK:
         update_piece(H8, F8);
-        board.castle &= 15 - CASTLE_BK;
+        board.castle &= 15 - CASTLE_BK - CASTLE_BQ;
         break;
     case CASTLE_BQ:
         update_piece(A8, D8);
-        board.castle &= 15 - CASTLE_BQ;
+        board.castle &= 15 - CASTLE_BK - CASTLE_BQ;
         break;
     case PROMOTION_N:
         board.pieces[move->end] = KNIGHT;
@@ -113,13 +113,6 @@ void unmove_piece() {
         board.pieces[move->end] = move->captured;
     }
 
-    /* Replaces enpassant captured pieces */
-    if (move->flag == ENPASSANT) {
-        int square = 16 * get_rank(move->start) + get_file(move->end);
-        board.colors[square] = board.player;
-        board.pieces[square] = PAWN;
-    }
-
     /* Additional moves based on flag */
     switch (move->flag) {
     case CASTLE_WK:
@@ -133,6 +126,11 @@ void unmove_piece() {
         break;
     case CASTLE_BQ:
         update_piece(D8, A8);
+        break;
+    case ENPASSANT:
+        int square = 16 * get_rank(move->start) + get_file(move->end);
+        board.colors[square] = board.player;
+        board.pieces[square] = PAWN;
         break;
     case PROMOTION_N:
     case PROMOTION_B:
