@@ -146,7 +146,7 @@ void unmove_piece() {
 }
 
 /* Moves piece from start to end if it is legal */
-int move_legal(U8 start, U8 end, U8 promotion) {
+int move_legal(U8 start, U8 end, U8 flag) {
     /* Start and end must be in the board and be different colors */
     /* Starting square must be the player to move's piece */
     if (invalid_square(start) || invalid_square(end) ||
@@ -165,7 +165,7 @@ int move_legal(U8 start, U8 end, U8 promotion) {
     /* Iterates through all legal moves and checks if the move is in there */
     for (int i = 0; i < count; i++) {
         if (moves[i].start == start && moves[i].end == end &&
-            (!promotion || moves[i].flag == promotion)) {
+            (flag < PROMOTION_N || moves[i].flag == flag)) {
             move_piece(&moves[i]);
             return SUCCESS;
         }
