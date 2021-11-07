@@ -100,7 +100,9 @@ void start_game(bool singleplayer) {
 
     while (!flag) {
         printf("Move: ");
-        scanf("%5s", move);
+        if (!scanf("%5s", move)) {
+            continue;
+        }
 
         one = tolower(move[0]) - 'a';
         two = move[1] - '1';
