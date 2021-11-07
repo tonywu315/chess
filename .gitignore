@@ -4,3 +4,6 @@
 # Executable files
 *.exe
 *.out
+
+# Build files
+/build
