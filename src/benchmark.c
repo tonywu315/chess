@@ -22,7 +22,7 @@ void perft(int depth, U64 *nodes) {
 
         for (int i = 0; i < count; i++) {
             move_piece(&move_list[i]);
-            if (!in_check()) {
+            if (!in_check(3 - board.player)) {
                 perft(depth - 1, nodes);
             }
             unmove_piece();
@@ -31,7 +31,7 @@ void perft(int depth, U64 *nodes) {
 }
 
 /* Performance test for enumerating mostly legal moves to a certain depth */
-static void speedy_perft(int depth, U64 *nodes) {
+static inline void speedy_perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
     int count = generate_moves(move_list);
 
@@ -40,7 +40,7 @@ static void speedy_perft(int depth, U64 *nodes) {
     } else {
         for (int i = 0; i < count; i++) {
             move_piece(&move_list[i]);
-            if (!in_check()) {
+            if (!in_check(3 - board.player)) {
                 speedy_perft(depth - 1, nodes);
             }
             unmove_piece();
@@ -49,7 +49,7 @@ static void speedy_perft(int depth, U64 *nodes) {
 }
 
 /* Performance test for enumerating all pseudo legal moves to a certain depth */
-static void pseudo_perft(int depth, U64 *nodes) {
+static inline void pseudo_perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
     int count = generate_moves(move_list);
 

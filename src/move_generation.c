@@ -91,9 +91,9 @@ int is_attacking(U8 square, U8 player) {
     return false;
 }
 
-/* After move, check if king is under attack */
-int in_check() {
-    return is_attacking(board.king[2 - board.player], board.player);
+/* Check if player is in check */
+int in_check(U8 player) {
+    return is_attacking(board.king[player - 1], 3 - player);
 }
 
 /* Generates pseudo-legal moves (checks are not considered) */
@@ -157,7 +157,7 @@ int generate_legal_moves(Move *moves) {
 
     for (int i = 0; i < pseudo_count; i++) {
         move_piece(&pseudo_moves[i]);
-        if (!in_check()) {
+        if (!in_check(3 - board.player)) {
             moves[count++] = pseudo_moves[i];
         }
         unmove_piece();
