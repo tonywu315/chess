@@ -42,9 +42,7 @@ int main() {
         "Q1e5+ 63. Kh4 Q8b5 64. Kg4 Qeb2 65. Kf3 Qc4 66. Ke3 Qbd4+ 67. Kf3 "
         "Qcc3+ 68. Kg2 Qdd2+ 69. Kh1 Qcc1");
 
-    load_pgn("1. f3 Nc6 2. g4 e5");
-
-    // start_board();
+    start_board();
     start_game(false);
 
     return SUCCESS;

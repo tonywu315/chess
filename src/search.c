@@ -54,7 +54,6 @@ int alpha_beta(int alpha, int beta, int depth, Line *mainline) {
     /* Checkmate and stalemate */
     if (moves_count == 0) {
         alpha = check ? -INT_MAX : 0;
-        printf("reached\n");
     }
 
     return alpha;
