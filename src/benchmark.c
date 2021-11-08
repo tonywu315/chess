@@ -3,8 +3,6 @@
 #include "move.h"
 #include "move_generation.h"
 
-typedef unsigned long long U64;
-
 /*
 CURRENT PERFORMANCE FOR DEPTH 6
 perft:          2.658 MNPS
@@ -14,7 +12,7 @@ loop_speed:     609.352 MNPS
 */
 
 /* Performance test for enumerating all moves to a certain depth */
-static inline void perft(int depth, U64 *nodes) {
+void perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
 
     if (depth == 0) {
@@ -33,7 +31,7 @@ static inline void perft(int depth, U64 *nodes) {
 }
 
 /* Performance test for enumerating mostly legal moves to a certain depth */
-static inline void speedy_perft(int depth, U64 *nodes) {
+static void speedy_perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
     int count = generate_moves(move_list);
 
@@ -51,7 +49,7 @@ static inline void speedy_perft(int depth, U64 *nodes) {
 }
 
 /* Performance test for enumerating all pseudo legal moves to a certain depth */
-static inline void pseudo_perft(int depth, U64 *nodes) {
+static void pseudo_perft(int depth, U64 *nodes) {
     Move move_list[MAX_MOVES];
     int count = generate_moves(move_list);
 
