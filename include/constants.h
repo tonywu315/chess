@@ -21,6 +21,7 @@
 #define STALEMATE 1
 
 typedef uint_fast8_t U8;
+typedef unsigned long long U64;
 
 /* 0x88 Board Representation (16x8 array) */
 typedef struct board {
