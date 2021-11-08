@@ -1,5 +1,7 @@
 project(tests)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
+
 # Create test
 add_executable(test.out test.c)
 add_test(NAME test COMMAND test.out)
