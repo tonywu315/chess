@@ -25,7 +25,6 @@ int main() {
         "b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5 "
         "35. Ra7 g6 36. Ra6+ Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 "
         "Kc5 41. Ra6 Nf2 42. g4 Bd3 43. Re6");
-    print_board(eval());
 
     /* Game to test pgn edge cases */
     load_pgn(
@@ -42,7 +41,9 @@ int main() {
         "Kg2 d1=Q 58. Kg3 e2 59. Kf4 e1=Q 60. Kf5 Qe8 61. Kf4 Qde1 62. Kg5 "
         "Q1e5+ 63. Kh4 Q8b5 64. Kg4 Qeb2 65. Kf3 Qc4 66. Ke3 Qbd4+ 67. Kf3 "
         "Qcc3+ 68. Kg2 Qdd2+ 69. Kh1 Qcc1");
-    print_board(eval());
+
+    start_board();
+    start_game(false);
 
     return SUCCESS;
 }
