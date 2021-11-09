@@ -21,6 +21,20 @@
 #define CHECKMATE_BLACK 3
 #define STALEMATE 1
 
+/* Debug macro only appears if DEBUG is passed in */
+#ifdef DEBUG
+#define DEBUG_VALUE true
+#else
+#define DEBUG_VALUE false
+#endif
+
+#define debug_print(fmt, ...)                                                  \
+    do {                                                                       \
+        if (DEBUG_VALUE)                                                       \
+            fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
+                    __LINE__, __func__, __VA_ARGS__);                          \
+    } while (0)
+
 typedef uint_fast8_t U8;
 typedef unsigned long long U64;
 
