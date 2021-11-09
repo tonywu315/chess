@@ -25,7 +25,6 @@ int main() {
         "b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5 "
         "35. Ra7 g6 36. Ra6+ Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 "
         "Kc5 41. Ra6 Nf2 42. g4 Bd3 43. Re6");
-    print_board(eval());
 
     /* Game to test pgn edge cases */
     load_pgn(
@@ -42,7 +41,9 @@ int main() {
         "Kg2 d1=Q 58. Kg3 e2 59. Kf4 e1=Q 60. Kf5 Qe8 61. Kf4 Qde1 62. Kg5 "
         "Q1e5+ 63. Kh4 Q8b5 64. Kg4 Qeb2 65. Kf3 Qc4 66. Ke3 Qbd4+ 67. Kf3 "
         "Qcc3+ 68. Kg2 Qdd2+ 69. Kh1 Qcc1");
-    print_board(eval());
+
+    start_board();
+    start_game(false);
 
     return SUCCESS;
 }
@@ -56,9 +57,8 @@ static int next(bool singleplayer) {
         Move moves[MAX_MOVES];
 
         if (!generate_legal_moves(moves)) {
-            board.player = 3 - board.player;
-            if (in_check()) {
-                return CHECKMATE;
+            if (in_check(board.player)) {
+                return board.player == WHITE ? CHECKMATE_WHITE: CHECKMATE_BLACK;
             }
             return STALEMATE;
         }
@@ -66,8 +66,9 @@ static int next(bool singleplayer) {
         Line mainline;
         score = alpha_beta(-INT_MAX, INT_MAX, 6, &mainline);
 
-        /* Checks for checkmate or stalemate */
-        if (score == INT_MAX) {
+        /* Checks if engine is going to be checkmated */
+        /* TODO: delay checkmate as long as possible instead of random */
+        if (score == -INT_MAX) {
             Move moves[MAX_MOVES];
 
             /* Finds number of legal moves */
@@ -75,14 +76,16 @@ static int next(bool singleplayer) {
                 move_piece(&moves[0]);
             } else {
                 /* If in check, it is checkmate */
-                board.player = 3 - board.player;
-                if (in_check()) {
-                    return CHECKMATE;
+                if (in_check(board.player)) {
+                    return CHECKMATE_WHITE;
                 }
                 return STALEMATE;
             }
         } else {
             move_piece(&mainline.moves[0]);
+            if (score == INT_MAX) {
+                return CHECKMATE_BLACK;
+            }
         }
     }
 
@@ -156,9 +159,10 @@ void start_game(bool singleplayer) {
     }
 
     print_board(0);
-    if (flag == CHECKMATE) {
-        printf("\nCheckmate! %s wins\n",
-               board.player == WHITE ? "White" : "Black");
+    if (flag == CHECKMATE_WHITE) {
+        printf("\nCheckmate! White wins\n");
+    } else if (flag == CHECKMATE_BLACK) {
+        printf("\nCheckmate! Black wins\n");
     } else {
         printf("\nStalemate\n");
     }

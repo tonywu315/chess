@@ -3,8 +3,7 @@ project(chess)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-# Header files and C files
-file(GLOB HEADERS "include/*.h")
+# C files
 set(SOURCES
     src/benchmark.c
     src/board.c
@@ -14,15 +13,18 @@ set(SOURCES
     src/search.c
 )
 
-# Executable file
+# Create executable file
 add_executable(chess.out ${SOURCES} src/main.c)
 target_include_directories(chess.out PRIVATE include)
 
-# Chess library file for tests
-add_library(chesslib ${SOURCES})
-target_include_directories(chesslib PRIVATE include)
+# Build tests in debug mode
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # Chess library file for tests
+    add_library(chesslib ${SOURCES})
+    target_include_directories(chesslib PRIVATE include)
 
-# Tests
-include(CTest)
-enable_testing()
-add_subdirectory(tests)
+    # Tests
+    include(CTest)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
