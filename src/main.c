@@ -1,21 +1,14 @@
-#include "benchmark.h"
 #include "board.h"
-#include "evaluation.h"
-#include "move.h"
-#include "move_generation.h"
-#include "search.h"
+#include "game.h"
 
 Board board;
 Move game_moves[MAX_GAME_LENTH];
-int root_pos;
-int search_pos;
-
-static int next(bool singleplayer);
-void start_game(bool singleplayer);
+int game_position;
 
 /* Test file for code */
 int main() {
     /* Bobby Fischer vs. Boris Spassky 1992 */
+
     load_pgn(
         "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 "
         "d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7 11. c4 c6 12. cxb5 axb5 13. Nc3 "
@@ -42,128 +35,12 @@ int main() {
         "Q1e5+ 63. Kh4 Q8b5 64. Kg4 Qeb2 65. Kf3 Qc4 66. Ke3 Qbd4+ 67. Kf3 "
         "Qcc3+ 68. Kg2 Qdd2+ 69. Kh1 Qcc1");
 
-    start_board();
-    start_game(false);
+    /* Mate in 11 if black plays g7h8*/
+    load_fen("2b2r2/2p3k1/pp2P3/3B2R1/8/2P4P/PPQ1pq2/2K5 b - - 0 26");
+    load_fen("2b1N3/2p5/pp1k4/3B4/4Q3/2P4P/PP2p3/2K5 b - - 2 35");
+
+
+    start_game(ONE_PLAYER, 6);
 
     return SUCCESS;
-}
-
-/* Makes computer move if not single player and prints board */
-static int next(bool singleplayer) {
-    int score;
-
-    if (singleplayer) {
-        score = eval();
-        Move moves[MAX_MOVES];
-
-        if (!generate_legal_moves(moves)) {
-            if (in_check(board.player)) {
-                return board.player == WHITE ? CHECKMATE_WHITE: CHECKMATE_BLACK;
-            }
-            return STALEMATE;
-        }
-    } else {
-        Line mainline;
-        score = alpha_beta(-INT_MAX, INT_MAX, 6, &mainline);
-
-        /* Checks if engine is going to be checkmated */
-        /* TODO: delay checkmate as long as possible instead of random */
-        if (score == -INT_MAX) {
-            Move moves[MAX_MOVES];
-
-            /* Finds number of legal moves */
-            if (generate_legal_moves(moves)) {
-                move_piece(&moves[0]);
-            } else {
-                /* If in check, it is checkmate */
-                if (in_check(board.player)) {
-                    return CHECKMATE_WHITE;
-                }
-                return STALEMATE;
-            }
-        } else {
-            move_piece(&mainline.moves[0]);
-            if (score == INT_MAX) {
-                return CHECKMATE_BLACK;
-            }
-        }
-    }
-
-    print_board(-score);
-    return SUCCESS;
-}
-
-/* Start chess engine */
-void start_game(bool singleplayer) {
-    char move[5] = {0};
-    int one, two, three, four, five, flag = 0;
-
-    printf("\n=== Chess Program ===\n");
-    print_board(0);
-
-    while (!flag) {
-        printf("Move: ");
-        if (!scanf("%5s", move)) {
-            continue;
-        }
-
-        one = tolower(move[0]) - 'a';
-        two = move[1] - '1';
-        three = tolower(move[2]) - 'a';
-        four = move[3] - '1';
-
-        switch (tolower(move[4])) {
-        case 'n':
-            five = PROMOTION_N;
-            break;
-        case 'b':
-            five = PROMOTION_B;
-            break;
-        case 'r':
-            five = PROMOTION_R;
-            break;
-        case 'q':
-            five = PROMOTION_Q;
-            break;
-        default:
-            five = 0;
-            break;
-        }
-
-        if (!strcmp(move, "undo") && search_pos) {
-            unmove_piece();
-            flag = next(singleplayer);
-        } else if (!strcmp(move, "O-O") || !strcmp(move, "0-0")) {
-            if ((board.player == WHITE && !move_legal(E1, G1, false)) ||
-                (board.player == BLACK && !move_legal(E8, G8, false))) {
-                flag = next(singleplayer);
-            }
-        } else if (!strcmp(move, "O-O-O") || !strcmp(move, "0-0-0")) {
-            if ((board.player == WHITE && !move_legal(E1, C1, false)) ||
-                (board.player == BLACK && !move_legal(E8, C8, false))) {
-                flag = next(singleplayer);
-            }
-        } else if (one >= 0 && two >= 0 && three >= 0 && four >= 0 &&
-                   one <= 7 && two <= 7 && three <= 7 && four <= 7) {
-            U8 start = one + two * 16, end = three + four * 16;
-            U8 square = board.player == WHITE ? 6 : 1;
-
-            if (two == square && board.pieces[start] == PAWN) {
-                if (five && !move_legal(start, end, five)) {
-                    flag = next(singleplayer);
-                }
-            } else if (!move_legal(start, end, false)) {
-                flag = next(singleplayer);
-            }
-        }
-    }
-
-    print_board(0);
-    if (flag == CHECKMATE_WHITE) {
-        printf("\nCheckmate! White wins\n");
-    } else if (flag == CHECKMATE_BLACK) {
-        printf("\nCheckmate! Black wins\n");
-    } else {
-        printf("\nStalemate\n");
-    }
 }

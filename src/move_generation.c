@@ -1,5 +1,4 @@
 #include "move_generation.h"
-#include "board.h"
 #include "move.h"
 
 static const char vectors[5][8] = {
@@ -12,7 +11,6 @@ static const char vectors[5][8] = {
 
 static int generate_pawn_move(Move *moves, int count, U8 start);
 static int generate_piece_move(Move *moves, int count, U8 start, U8 piece);
-static inline int exists(U8 square, U8 player, U8 piece);
 
 /* Creates a move with move information and current board information */
 void create_move(Move *move, U8 start, U8 end, U8 flag) {
@@ -282,9 +280,4 @@ static int generate_piece_move(Move *moves, int count, U8 start, U8 piece) {
     }
 
     return count;
-}
-
-/* Checks if a certain player has a certain piece at square */
-static inline int exists(U8 square, U8 player, U8 piece) {
-    return board.pieces[square] == piece && board.colors[square] == player;
 }

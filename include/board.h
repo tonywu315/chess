@@ -3,9 +3,6 @@
 
 #include "constants.h"
 
-int invalid_square(U8 square);
-int get_rank(U8 square);
-int get_file(U8 square);
 void init_board();
 void start_board();
 void print_board(int score);

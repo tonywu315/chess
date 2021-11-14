@@ -3,8 +3,7 @@
 
 Board board;
 Move game_moves[MAX_GAME_LENTH];
-int root_pos;
-int search_pos;
+int game_position;
 
 int main() {
     U64 nodes;

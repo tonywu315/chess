@@ -8,6 +8,7 @@ set(SOURCES
     src/benchmark.c
     src/board.c
     src/evaluation.c
+    src/game.c
     src/move_generation.c
     src/move.c
     src/search.c

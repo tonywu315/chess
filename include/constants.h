@@ -17,14 +17,38 @@
 #define ALL_CASTLE 15
 #define SUCCESS 0
 #define FAILURE 1
-#define CHECKMATE_WHITE 2
-#define CHECKMATE_BLACK 3
-#define STALEMATE 1
+#define ONE_PLAYER true
+#define TWO_PLAYER false
+
+/* Debug macro only appears if DEBUG is passed in */
+/* Compiler optimizes out functions if DEBUG_VALUE is not set */
+#ifdef DEBUG
+#define DEBUG_VALUE true
+#else
+#define DEBUG_VALUE false
+#endif
+
+/* Prints debug information */
+#define debug_print(fmt, ...)                                                  \
+    do {                                                                       \
+        if (DEBUG_VALUE)                                                       \
+            fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
+                    __LINE__, __func__, __VA_ARGS__);                          \
+    } while (0)
+
+/* Asserts that expression is true and exits if it is not */
+#define debug_assert(expression)                                               \
+    do {                                                                       \
+        if (DEBUG_VALUE && !(expression)) {                                    \
+            fprintf(stderr, "[%s] %s:%d in %s(): %s FAILED\n", __TIME__,       \
+                    __FILE__, __LINE__, __func__, #expression);                \
+            exit(1);                                                           \
+        }                                                                      \
+    } while (0)
 
 typedef uint_fast8_t U8;
 typedef unsigned long long U64;
 
-/* 0x88 Board Representation (16x8 array) */
 typedef struct board {
     U8 colors[ARRAY_SIZE];
     U8 pieces[ARRAY_SIZE];
@@ -36,7 +60,6 @@ typedef struct board {
 } Board;
 
 extern Board board;
-
 typedef struct move {
     U8 start;
     U8 end;
@@ -48,8 +71,7 @@ typedef struct move {
 } Move;
 
 extern Move game_moves[MAX_GAME_LENTH]; /* May need to reallocate rarely */
-extern int root_pos;
-extern int search_pos;
+extern int game_position;
 
 typedef struct line {
     int length;
@@ -109,5 +131,32 @@ enum flag {
     PROMOTION_R = 11,
     PROMOTION_Q = 12
 };
+
+enum result {
+    NONE,
+    WHITE_WIN,
+    BLACK_WIN,
+    DRAW
+};
+
+/* 0x88 Board Representation (16x8 array) */
+
+/* Returns file and rank of square (number from 0 to 7) */
+static inline int get_file(U8 square) { return square & 7; }
+static inline int get_rank(U8 square) { return square >> 4; }
+
+/* Returns square given file and rank */
+static inline U8 get_square(U8 file, U8 rank) { return file + rank * 16; }
+
+/* Returns true if square is outside the board */
+static inline bool invalid_square(U8 square) { return square & 0x88; }
+
+/* Returns true if file or rank is valid */
+static inline bool valid_row(U8 row) { return row <= 7; }
+
+/* Checks if a certain player has a certain piece at square */
+static inline bool exists(U8 square, U8 player, U8 piece) {
+    return board.pieces[square] == piece && board.colors[square] == player;
+}
 
 #endif
