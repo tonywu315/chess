@@ -71,8 +71,7 @@ typedef struct move {
 } Move;
 
 extern Move game_moves[MAX_GAME_LENTH]; /* May need to reallocate rarely */
-extern int root_pos;
-extern int search_pos;
+extern int game_position;
 
 typedef struct line {
     int length;

@@ -24,8 +24,7 @@ void init_board() {
     board.king[WHITE - 1] = 255;
     board.king[BLACK - 1] = 255;
 
-    root_pos = 0;
-    search_pos = 0;
+    game_position = 0;
 }
 
 /* Creates the starting board */
@@ -105,8 +104,15 @@ void print_board(int score) {
         }
     }
 
-    printf("\nEvaluation: %d\n", score);
-    printf("Player to move: %s\n", players[(int)board.player]);
+    if (abs(score) < INT_MAX - 2) {
+        if (abs(score) >= INT_MAX - 100) {
+            printf("\nMate in %d\n", (INT_MAX - abs(score)) / 2);
+        } else {
+            printf("\nEvaluation: %d\n", score);
+        }
+
+        printf("Player to move: %s\n", players[(int)board.player]);
+    }
 }
 
 /* Loads a board from FEN representation */
@@ -186,6 +192,7 @@ void load_fen(const char *fen) {
     i += 2;
 
     /* Castle rights */
+    board.castle = 0;
     do {
         switch (fen[i]) {
         case 'K':
@@ -237,13 +244,13 @@ void load_pgn(const char *pgn) {
 
             /* Resets board if move is illegal */
             san_to_move(&move, san, player);
-            if (move_legal(move.start, move.end, move.flag)) {
+            if (move_legal(&move)) {
                 printf("Error: could not load PGN\n");
                 printf("Invalid move %d: %c%c %c%c %d (%s)\n", move_count,
                        get_file(move.start) + 'A', get_rank(move.start) + '1',
                        get_file(move.end) + 'A', get_rank(move.end) + '1',
                        move.flag, san);
-                print_board(123);
+                print_board(0);
                 start_board();
                 return;
             }

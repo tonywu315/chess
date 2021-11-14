@@ -4,7 +4,7 @@
 #include "move_generation.h"
 
 /* Alpha beta pruning */
-int alpha_beta(int alpha, int beta, int depth, Line *mainline) {
+int alpha_beta(int alpha, int beta, int ply, int depth, Line *mainline) {
     Move move_list[MAX_MOVES];
     Line line;
     bool check = in_check(board.player);
@@ -33,7 +33,7 @@ int alpha_beta(int alpha, int beta, int depth, Line *mainline) {
 
         moves_count++;
 
-        score = -alpha_beta(-beta, -alpha, depth - 1, &line);
+        score = -alpha_beta(-beta, -alpha, ply + 1, depth - 1, &line);
         unmove_piece();
 
         if (score > alpha) {
@@ -52,7 +52,7 @@ int alpha_beta(int alpha, int beta, int depth, Line *mainline) {
 
     /* Checkmate and stalemate */
     if (moves_count == 0) {
-        alpha = check ? -INT_MAX : 0;
+        alpha = check ? -INT_MAX + ply : 0;
     }
 
     return alpha;

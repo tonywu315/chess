@@ -5,6 +5,7 @@
 
 void move_piece(const Move *move);
 void unmove_piece();
-int move_legal(U8 start, U8 end, U8 promotion);
+int move_legal(const Move *move);
+int move_computer(int depth);
 
 #endif
