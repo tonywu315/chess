@@ -124,4 +124,16 @@ enum flag {
     PROMOTION_Q = 12
 };
 
+/* Returns true if square is outside the board */
+static inline int invalid_square(U8 square) { return square & 0x88; }
+
+/* Returns rank and file of square (number from 0 to 7) */
+static inline int get_rank(U8 square) { return square >> 4; }
+static inline int get_file(U8 square) { return square & 7; }
+
+/* Checks if a certain player has a certain piece at square */
+static inline int exists(U8 square, U8 player, U8 piece) {
+    return board.pieces[square] == piece && board.colors[square] == player;
+}
+
 #endif

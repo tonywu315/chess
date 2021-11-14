@@ -5,13 +5,6 @@
 static void san_to_move(Move *move, const char *san, U8 player);
 static void create_pawn_move(Move *move, const char *san, U8 player, int len);
 
-/* Returns true if square is outside the board */
-inline int invalid_square(U8 square) { return square & 0x88; }
-
-/* Returns rank and file of square (number from 0 to 7) */
-inline int get_rank(U8 square) { return square >> 4; }
-inline int get_file(U8 square) { return square & 7; }
-
 /* Returns index in 0x88 board */
 static inline int get_index(char file, char rank) {
     return 16 * (rank - '1') + file - 'a';

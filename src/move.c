@@ -1,5 +1,4 @@
 #include "move.h"
-#include "board.h"
 #include "move_generation.h"
 
 static inline void update_piece(U8 start, U8 end);
