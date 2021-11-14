@@ -29,7 +29,7 @@ void start_game(bool mode, int depth) {
 
         /* Play computer move if in single player mode */
         if (mode) {
-            score = move_computer(depth);
+            score = -move_computer(depth);
             if ((status = game_status())) {
                 break;
             }
