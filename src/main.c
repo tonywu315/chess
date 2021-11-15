@@ -5,10 +5,10 @@ Board board;
 Move game_moves[MAX_GAME_LENTH];
 int game_position;
 
-/* Test file for code */
+/* Start game */
 int main() {
     start_board();
-    start_game(ONE_PLAYER, 6);
+    start_singleplayer(BLACK, 6);
 
     return SUCCESS;
 }

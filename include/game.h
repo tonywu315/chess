@@ -3,6 +3,7 @@
 
 #include "constants.h"
 
-void start_game(bool mode, int depth);
+void start_singleplayer(int player, int depth);
+void start_multiplayer();
 
 #endif

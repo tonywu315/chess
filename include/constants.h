@@ -17,8 +17,6 @@
 #define ALL_CASTLE 15
 #define SUCCESS 0
 #define FAILURE 1
-#define ONE_PLAYER true
-#define TWO_PLAYER false
 
 /* Debug macro only appears if DEBUG is passed in */
 /* Compiler optimizes out functions if DEBUG_VALUE is not set */

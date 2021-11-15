@@ -3,20 +3,41 @@
 #include "move.h"
 #include "move_generation.h"
 
+static void start_game(bool mode, int player, int depth);
 static int get_move(Move *move, bool mode);
 static int game_status();
 
+/* Start single player game */
+void start_singleplayer(int player_color, int depth) {
+    start_game(true, player_color, depth);
+}
+
+/* Start multi player game */
+void start_multiplayer() {
+    start_game(false, 0, 0);
+}
+
 /* Start chess game */
-void start_game(bool mode, int depth) {
-    int status, score;
+static void start_game(bool mode, int player, int depth) {
+    int status, score = eval();
+    bool flag = true;
 
     printf("\n=== Chess Program ===\n");
-    print_board(eval());
 
-    while (true) {
-        Move move;
+    /* Computer moves first if player is black */
+    if (mode && player == BLACK) {
+        score = -move_computer(depth);
+        if ((status = game_status())) {
+            flag = false;
+        }
+    }
+
+    while (flag) {
+        /* Print board */
+        print_board(score);
 
         /* Get move until it is legal */
+        Move move;
         while (get_move(&move, mode) || move_legal(&move)) {
         }
 
@@ -34,9 +55,6 @@ void start_game(bool mode, int depth) {
                 break;
             }
         }
-
-        /* Print board */
-        print_board(score);
     }
 
     print_board(score);
