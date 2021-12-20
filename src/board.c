@@ -104,7 +104,9 @@ void print_board(int score) {
         }
     }
 
-    if (abs(score) < INT_MAX - 2) {
+    /* Print score unless end of game */
+    if (score != INT_MAX) {
+        /* Prints mate in x if detected */
         if (abs(score) >= INT_MAX - 100) {
             printf("\nMate in %d\n", (INT_MAX - abs(score)) / 2);
         } else {

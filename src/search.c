@@ -20,6 +20,7 @@ int alpha_beta(int alpha, int beta, int ply, int depth, Line *mainline) {
         return eval();
     }
 
+    /* Iterate over all moves */
     int count = generate_moves(move_list), moves_count = 0;
     for (int i = 0; i < count; i++) {
         int score;
@@ -33,14 +34,17 @@ int alpha_beta(int alpha, int beta, int ply, int depth, Line *mainline) {
 
         moves_count++;
 
+        /* Calculate score of opponent */
         score = -alpha_beta(-beta, -alpha, ply + 1, depth - 1, &line);
         unmove_piece();
 
+        /* Alpha cutoff */
         if (score > alpha) {
             mainline->moves[0] = move_list[i];
             memcpy(mainline->moves + 1, line.moves, line.length * sizeof(Move));
             mainline->length = line.length + 1;
 
+            /* Beta cutoff */
             if (score >= beta) {
                 alpha = beta;
                 break;

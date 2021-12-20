@@ -195,40 +195,25 @@ static int generate_pawn_move(Move *moves, int count, U8 start) {
     }
 
     /* Adds pawn attacks to the right and left and en passant */
-    U8 attack = end + RIGHT;
-    if (!invalid_square(attack) && board.colors[attack] != board.player) {
-        if (board.colors[attack] != EMPTY_COLOR) {
-            /* Adds promotion capture moves */
-            if (get_rank(start) == 7 - second) {
-                for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    create_move(&move, start, attack, i);
+    int directions[2] = {RIGHT, LEFT};
+    for (int i = 0; i < 2; i++) {
+        U8 attack = end + directions[i];
+        if (!invalid_square(attack) && board.colors[attack] != board.player) {
+            if (board.colors[attack] != EMPTY_COLOR) {
+                /* Adds promotion capture moves */
+                if (get_rank(start) == 7 - second) {
+                    for (int j = PROMOTION_N; j <= PROMOTION_Q; j++) {
+                        create_move(&move, start, attack, j);
+                        moves[count++] = move;
+                    }
+                } else {
+                    create_move(&move, start, attack, CAPTURE);
                     moves[count++] = move;
                 }
-            } else {
-                create_move(&move, start, attack, CAPTURE);
+            } else if (attack == board.enpassant) {
+                create_move(&move, start, attack, ENPASSANT);
                 moves[count++] = move;
             }
-        } else if (attack == board.enpassant) {
-            create_move(&move, start, attack, ENPASSANT);
-            moves[count++] = move;
-        }
-    }
-    attack = end + LEFT;
-    if (!invalid_square(attack) && board.colors[attack] != board.player) {
-        if (board.colors[attack] != EMPTY_COLOR) {
-            /* Adds promotion capture moves */
-            if (get_rank(start) == 7 - second) {
-                for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                    create_move(&move, start, attack, i);
-                    moves[count++] = move;
-                }
-            } else {
-                create_move(&move, start, attack, CAPTURE);
-                moves[count++] = move;
-            }
-        } else if (attack == board.enpassant) {
-            create_move(&move, start, attack, ENPASSANT);
-            moves[count++] = move;
         }
     }
 

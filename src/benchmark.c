@@ -5,10 +5,10 @@
 
 /*
 CURRENT PERFORMANCE FOR DEPTH 6
-perft:          2.658 MNPS
-speedy_perft:   17.354 MNPS
-pseudo_perft:   21.980 MNPS
-loop_speed:     609.352 MNPS
+perft:          4.882 MNPS
+speedy_perft:   29.444 MNPS
+pseudo_perft:   35.542 MNPS
+loop_speed:     376.165 MNPS
 */
 
 /* Performance test for enumerating all moves to a certain depth */
@@ -64,13 +64,14 @@ static inline void pseudo_perft(int depth, U64 *nodes) {
     }
 }
 
-/* Tests speed to loop through depth * 100 million times */
+/* Tests speed to loop through depth * 1 billion times */
 static inline U64 loop_speed(int depth) {
-    for (U64 i = 0; i < (U64)(depth * 100000000); i++) {
+    U64 billion = 1000000000;
+    for (U64 i = 0; i < depth * billion; i++) {
         ;
     }
 
-    return depth * 100000000;
+    return depth * billion;
 }
 
 /* Computes time to complete task */

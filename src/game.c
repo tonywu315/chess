@@ -43,6 +43,7 @@ static void start_game(bool mode, int player, int depth) {
 
         /* Stop game if it is over */
         if ((status = game_status())) {
+            score = INT_MAX;
             board.player = 3 - board.player;
             break;
         }
@@ -52,6 +53,7 @@ static void start_game(bool mode, int player, int depth) {
         if (mode) {
             score = -move_computer(depth);
             if ((status = game_status())) {
+                score = INT_MAX;
                 break;
             }
         }
