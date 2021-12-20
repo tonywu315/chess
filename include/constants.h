@@ -10,6 +10,8 @@
 #include <string.h>
 #include <time.h>
 
+#define VERSION 1.0
+
 #define MAX_PLY 64
 #define MAX_MOVES 256
 #define MAX_GAME_LENTH 1024
