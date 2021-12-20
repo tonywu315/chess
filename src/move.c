@@ -155,20 +155,9 @@ void unmove_piece() {
 
 /* Moves piece from start to end if it is legal */
 int move_legal(const Move *move) {
-    /* Start and end must be in the board and be different colors */
-    /* Starting square must be the player to move's piece */
-    if (invalid_square(move->start) || invalid_square(move->end) ||
-        board.colors[move->start] != board.player ||
-        board.colors[move->end] == board.player) {
-        return FAILURE;
-    }
-
     /* Generate legal moves */
     Move moves[MAX_MOVES];
     int count = generate_legal_moves(moves);
-
-    /* NOTE: Could change moves from array to hashset later, but this code only
-    runs once per turn, so performance is not critical */
 
     /* Iterates through all legal moves and checks if the move is in there */
     for (int i = 0; i < count; i++) {
@@ -187,17 +176,7 @@ int move_computer(int depth) {
     Line mainline;
     int score = alpha_beta(-INT_MAX, INT_MAX, 0, depth, &mainline);
 
-    /* Checks if engine is going to be checkmated */
-    if (score == -INT_MAX) {
-        /* TODO: delay checkmate as long as possible */
-        Move moves[MAX_MOVES];
-        generate_legal_moves(moves);
-        move_piece(&moves[0]);
-
-        debug_print("%s\n", "Computer is getting checkmated");
-    } else {
-        move_piece(&mainline.moves[0]);
-    }
+    move_piece(&mainline.moves[0]);
 
     return score;
 }
