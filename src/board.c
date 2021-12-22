@@ -240,8 +240,8 @@ void load_pgn(const char *pgn) {
         for (U8 player = WHITE; player <= BLACK; player++) {
             while (pgn[++i] != ' ' && pgn[i] != '\0') {
                 san[j++] = pgn[i];
-                san[j] = '\0';
             }
+            san[j] = '\0';
             j = 0;
 
             /* Resets board if move is illegal */

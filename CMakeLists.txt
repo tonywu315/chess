@@ -5,6 +5,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # C files
 set(SOURCES
+    src/bitboard.c
+    src/bitboard_move_generation.c
     src/benchmark.c
     src/board.c
     src/evaluation.c

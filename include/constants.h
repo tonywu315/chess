@@ -2,6 +2,7 @@
 #define CONSTANTS_H
 
 #include <ctype.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -46,6 +47,7 @@
         }                                                                      \
     } while (0)
 
+typedef uint64_t Bitboard;
 typedef uint_fast8_t U8;
 typedef unsigned long long U64;
 
@@ -78,16 +80,28 @@ typedef struct line {
     Move moves[MAX_PLY];
 } Line;
 
+// clang-format off
 enum square {
-    A1 = 0  , B1, C1, D1, E1, F1, G1, H1,
-    A2 = 16 , B2, C2, D2, E2, F2, G2, H2,
-    A3 = 32 , B3, C3, D3, E3, F3, G3, H3,
-    A4 = 48 , B4, C4, D4, E4, F4, G4, H4,
-    A5 = 64 , B5, C5, D5, E5, F5, G5, H5,
-    A6 = 80 , B6, C6, D6, E6, F6, G6, H6,
-    A7 = 96 , B7, C7, D7, E7, F7, G7, H7,
-    A8 = 112, B8, C8, D8, E8, F8, G8, H8
+    A1, B1, C1, D1, E1, F1, G1, H1,
+    A2, B2, C2, D2, E2, F2, G2, H2,
+    A3, B3, C3, D3, E3, F3, G3, H3,
+    A4, B4, C4, D4, E4, F4, G4, H4,
+    A5, B5, C5, D5, E5, F5, G5, H5,
+    A6, B6, C6, D6, E6, F6, G6, H6,
+    A7, B7, C7, D7, E7, F7, G7, H7,
+    A8, B8, C8, D8, E8, F8, G8, H8
 };
+
+// enum square {
+//     A1 = 0  , B1, C1, D1, E1, F1, G1, H1,
+//     A2 = 16 , B2, C2, D2, E2, F2, G2, H2,
+//     A3 = 32 , B3, C3, D3, E3, F3, G3, H3,
+//     A4 = 48 , B4, C4, D4, E4, F4, G4, H4,
+//     A5 = 64 , B5, C5, D5, E5, F5, G5, H5,
+//     A6 = 80 , B6, C6, D6, E6, F6, G6, H6,
+//     A7 = 96 , B7, C7, D7, E7, F7, G7, H7,
+//     A8 = 112, B8, C8, D8, E8, F8, G8, H8
+// };
 
 enum color {
     EMPTY_COLOR,
@@ -106,15 +120,26 @@ enum piece {
 };
 
 enum direction {
-    UPRIGHT = 17,
-    UP = 16,
-    UPLEFT = 15,
+    UPRIGHT = 9,
+    UP = 8,
+    UPLEFT = 7,
     RIGHT = 1,
     LEFT = -1,
-    DOWNRIGHT = -15,
-    DOWN = -16,
-    DOWNLEFT = -17
+    DOWNRIGHT = -7,
+    DOWN = -8,
+    DOWNLEFT = -9
 };
+
+// enum direction {
+//     UPRIGHT = 17,
+//     UP = 16,
+//     UPLEFT = 15,
+//     RIGHT = 1,
+//     LEFT = -1,
+//     DOWNRIGHT = -15,
+//     DOWN = -16,
+//     DOWNLEFT = -17
+// };
 
 enum flag {
     NORMAL = 0,
@@ -138,6 +163,39 @@ enum result {
     BLACK_WIN,
     DRAW
 };
+// clang-format on
+
+/* Bitboard Functions */
+
+static inline int get_bit(Bitboard bitboard, U8 square) {
+    return bitboard & (UINT64_C(1) << square) ? 1 : 0;
+}
+
+static inline void set_bit(Bitboard *bitboard, U8 square) {
+    *bitboard |= UINT64_C(1) << square;
+}
+
+static inline void flip_bit(Bitboard *bitboard, U8 square) {
+    *bitboard ^= UINT64_C(1) << square;
+}
+
+static inline void clear_bit(Bitboard *bitboard, U8 square) {
+    *bitboard &= ~(UINT64_C(1) << square);
+}
+
+/* Hamming Weight Algorithm, 12 Arithmetic Operations */
+static inline int get_population(Bitboard bitboard) {
+    /* 2-adic fractions: -1/3, -1/5, -1/17, -1/255 */
+    const Bitboard K1 = UINT64_C(0x5555555555555555);
+    const Bitboard K2 = UINT64_C(0x3333333333333333);
+    const Bitboard K4 = UINT64_C(0x0F0F0F0F0F0F0F0F);
+    const Bitboard KF = UINT64_C(0x0101010101010101);
+
+    bitboard -= ((bitboard >> 1) & K1);
+    bitboard = (bitboard & K2) + ((bitboard >> 2) & K2);
+    bitboard = (bitboard + (bitboard >> 4)) & K4;
+    return (int)((bitboard * KF) >> 56);
+}
 
 /* 0x88 Board Representation (16x8 array) */
 
