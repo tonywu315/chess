@@ -183,18 +183,26 @@ static inline void clear_bit(Bitboard *bitboard, U8 square) {
     *bitboard &= ~(UINT64_C(1) << square);
 }
 
+static inline Bitboard create_bit(U8 square) { return UINT64_C(1) << square; }
+
+static inline int in_bounds(U8 start, int direction) {
+    int end = start + direction;
+    int distance = abs((start / 8 - end / 8) - (start % 8 - end % 8));
+    return end >= A1 && end <= H8 && distance <= 2;
+}
+
 /* Hamming Weight Algorithm, 12 Arithmetic Operations */
 static inline int get_population(Bitboard bitboard) {
     /* 2-adic fractions: -1/3, -1/5, -1/17, -1/255 */
-    const Bitboard K1 = UINT64_C(0x5555555555555555);
-    const Bitboard K2 = UINT64_C(0x3333333333333333);
-    const Bitboard K4 = UINT64_C(0x0F0F0F0F0F0F0F0F);
-    const Bitboard KF = UINT64_C(0x0101010101010101);
+    const Bitboard k1 = UINT64_C(0x5555555555555555);
+    const Bitboard k2 = UINT64_C(0x3333333333333333);
+    const Bitboard k3 = UINT64_C(0x0F0F0F0F0F0F0F0F);
+    const Bitboard kf = UINT64_C(0x0101010101010101);
 
-    bitboard -= ((bitboard >> 1) & K1);
-    bitboard = (bitboard & K2) + ((bitboard >> 2) & K2);
-    bitboard = (bitboard + (bitboard >> 4)) & K4;
-    return (int)((bitboard * KF) >> 56);
+    bitboard -= ((bitboard >> 1) & k1);
+    bitboard = (bitboard & k2) + ((bitboard >> 2) & k2);
+    bitboard = (bitboard + (bitboard >> 4)) & k3;
+    return (int)((bitboard * kf) >> 56);
 }
 
 /* 0x88 Board Representation (16x8 array) */
