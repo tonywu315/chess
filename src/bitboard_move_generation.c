@@ -36,6 +36,8 @@ static void init_magics(U8 piece);
 static Bitboard get_rook_mask(U8 square);
 static Bitboard get_bishop_mask(U8 square);
 static Bitboard get_slider_attack(U8 square, Bitboard occupancy, U8 piece);
+static inline Bitboard get_rook_attacks(U8 square, Bitboard occupancy);
+static inline Bitboard get_bishop_attacks(U8 square, Bitboard occupancy);
 static Bitboard random();
 
 void init_attacks() {
@@ -48,6 +50,17 @@ void init_attacks() {
 
     init_magics(ROOK);
     init_magics(BISHOP);
+}
+
+int is_attacked(Board board, U8 square, U8 player) {
+    int shift = player == WHITE ? -1 : 5;
+    return (pawn_attacks[2 - player][square] & board.pieces[PAWN + shift]) ||
+           (knight_attacks[square] & board.pieces[KNIGHT + shift]) ||
+           (king_attacks[square] & board.pieces[KING + shift]) ||
+           (get_rook_attacks(square, board.occupancies[2]) &
+            (board.pieces[ROOK + shift] | board.pieces[QUEEN + shift])) ||
+           (get_bishop_attacks(square, board.occupancies[2]) &
+            (board.pieces[BISHOP + shift] | board.pieces[QUEEN + shift]));
 }
 
 static Bitboard init_pawn_attacks(U8 square, U8 player) {
@@ -186,6 +199,16 @@ static Bitboard get_slider_attack(U8 square, Bitboard occupancy, U8 piece) {
     }
 
     return attacks;
+}
+
+static inline Bitboard get_rook_attacks(U8 square, Bitboard occupancy) {
+    Magic m = rook_magics[square];
+    return m.attacks[((occupancy & m.mask) * m.magic) >> m.shift];
+}
+
+static inline Bitboard get_bishop_attacks(U8 square, Bitboard occupancy) {
+    Magic m = bishop_magics[square];
+    return m.attacks[((occupancy & m.mask) * m.magic) >> m.shift];
 }
 
 static Bitboard random() {

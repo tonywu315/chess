@@ -15,5 +15,14 @@ int main(void) {
 
     print_board(board, 0);
 
+    Bitboard test = UINT64_C(0);
+    for (U8 square = A1; square <= H8; square++) {
+        if (is_attacked(board, square, WHITE)) {
+            set_bit(&test, square);
+        }
+    }
+
+    print_bitboard(test);
+
     return SUCCESS;
 }

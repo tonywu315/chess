@@ -4,5 +4,6 @@
 #include "constants.h"
 
 void init_attacks();
+int is_attacked(Board board, U8 square, U8 player);
 
 #endif
