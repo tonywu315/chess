@@ -14,8 +14,7 @@
 #define VERSION 1.0
 
 #define MAX_PLY 64
-#define MAX_MOVES 256
-#define MAX_GAME_LENTH 1024
+#define MAX_MOVES 1024
 #define ARRAY_SIZE 128
 #define ALL_CASTLE 15
 #define SUCCESS 0
@@ -30,7 +29,7 @@
 #endif
 
 /* Prints debug information */
-#define debug_print(fmt, ...)                                                  \
+#define debug_printf(fmt, ...)                                                  \
     do {                                                                       \
         if (DEBUG_VALUE)                                                       \
             fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
@@ -52,6 +51,15 @@ typedef uint_fast8_t U8;
 typedef unsigned long long U64;
 
 typedef struct board {
+    Bitboard pieces[12];
+    Bitboard occupancies[3];
+    U8 player;
+    U8 castle;
+    U8 enpassant;
+    U8 draw_ply;
+} Board;
+
+typedef struct oldboard {
     U8 colors[ARRAY_SIZE];
     U8 pieces[ARRAY_SIZE];
     U8 player;    /* Player to move */
@@ -59,9 +67,9 @@ typedef struct board {
     U8 enpassant; /* En passant square */
     U8 ply;       /* Keeps track for 50 move rule */
     U8 king[2];   /* Location of kings */
-} Board;
+} OldBoard;
 
-extern Board board;
+extern OldBoard oldboard;
 typedef struct move {
     U8 start;
     U8 end;
@@ -72,7 +80,7 @@ typedef struct move {
     U8 ply;
 } Move;
 
-extern Move game_moves[MAX_GAME_LENTH]; /* May need to reallocate rarely */
+extern Move game_moves[MAX_MOVES]; /* May need to reallocate rarely */
 extern int game_position;
 
 typedef struct line {
@@ -89,7 +97,8 @@ enum square {
     A5, B5, C5, D5, E5, F5, G5, H5,
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
-    A8, B8, C8, D8, E8, F8, G8, H8
+    A8, B8, C8, D8, E8, F8, G8, H8,
+    NO_SQUARE
 };
 
 // enum square {
@@ -205,6 +214,16 @@ static inline int get_population(Bitboard bitboard) {
     return (int)((bitboard * kf) >> 56);
 }
 
+/* ~35% faster for 1 bit, similar for 2 bits */
+static inline int get_sparse_population(Bitboard bitboard) {
+    int count = 0;
+    while (bitboard) {
+        bitboard &= bitboard - 1;
+        count++;
+    }
+    return count;
+}
+
 /* 0x88 Board Representation (16x8 array) */
 
 /* Returns file and rank of square (number from 0 to 7) */
@@ -222,7 +241,7 @@ static inline bool valid_row(U8 row) { return row <= 7; }
 
 /* Checks if a certain player has a certain piece at square */
 static inline bool exists(U8 square, U8 player, U8 piece) {
-    return board.pieces[square] == piece && board.colors[square] == player;
+    return oldboard.pieces[square] == piece && oldboard.colors[square] == player;
 }
 
 #endif
