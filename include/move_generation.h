@@ -3,7 +3,4 @@
 
 #include "constants.h"
 
-void init_attacks();
-int is_attacked(Board board, int square, int player);
-
 #endif

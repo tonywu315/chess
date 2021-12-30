@@ -13,12 +13,10 @@ static inline void move_capture(Board *board, int start, int end);
 static inline void move_castle(Board *board, int start, int end);
 static inline void move_enpassant(Board *board, int start, int end);
 static inline void move_promotion(Board *board, int square, int piece);
+static inline void unmove_castle(Board *board, int start, int end);
+static inline void place_piece(Board *board, int square, int piece);
 
-Move encode_move(int start, int end, int flag, int promotion) {
-    return start | (end << 6) | (flag << 12) | (promotion << 14);
-}
-
-void move(Board *board, Move move) {
+void make_move(Board *board, Move move) {
     State state = board->state[board->ply];
 
     int start = get_move_start(move);
@@ -35,6 +33,7 @@ void move(Board *board, Move move) {
     if (flag == CASTLING_FLAG) {
         move_castle(board, start, end);
     } else if (flag == ENPASSANT_FLAG) {
+        state.capture = board->board[8 * (start / 8) + (end & 7)];
         move_enpassant(board, start, end);
         state.draw_ply = 0;
     } else {
@@ -59,6 +58,35 @@ void move(Board *board, Move move) {
 
     board->state[++board->ply] = state;
     board->player = !board->player;
+}
+
+void unmake_move(Board *board, Move move) {
+    State state = board->state[board->ply];
+    int start = get_move_start(move);
+    int end = get_move_end(move);
+    int flag = get_move_flag(move);
+
+    board->player = !board->player;
+
+    if (flag == CASTLING_FLAG) {
+        unmove_castle(board, start, end);
+    } else {
+        move_piece(board, end, start);
+
+        if (state.capture != NO_PIECE) {
+            if (flag == ENPASSANT_FLAG) {
+                place_piece(board, 8 * (start / 8) + (end & 7), state.capture);
+            } else {
+                place_piece(board, end, state.capture);
+            }
+        }
+
+        if (flag == PROMOTION_FLAG) {
+            move_promotion(board, start, PAWN);
+        }
+    }
+
+    board->ply--;
 }
 
 static inline void move_piece(Board *board, int start, int end) {
@@ -89,21 +117,23 @@ static inline void move_capture(Board *board, int start, int end) {
 }
 
 static inline void move_castle(Board *board, int start, int end) {
-    int king = board->board[start];
-    int rook = board->board[end];
     int side = start < end;
-    Bitboard kings = create_bit(start) | create_bit(start + (side ? 2 : -2));
-    Bitboard rooks = create_bit(end) | create_bit(start + (side ? 1 : -1));
+    int king_square = start + (side ? 2 : -2);
+    int rook_square = start + (side ? 1 : -1);
+    int king = board->board[start];
+    int rook = king - 2;
+    Bitboard kings = create_bit(start) | create_bit(king_square);
+    Bitboard rooks = create_bit(end) | create_bit(rook_square);
 
     board->pieces[king] ^= kings;
     board->pieces[rook] ^= rooks;
-    board->occupancies[get_color(start)] ^= kings | rooks;
+    board->occupancies[get_color(king)] ^= kings | rooks;
     board->occupancies[2] ^= kings | rooks;
 
     board->board[start] = NO_PIECE;
     board->board[end] = NO_PIECE;
-    board->board[start + (side ? 2 : -2)] = king;
-    board->board[start + (side ? 1 : -1)] = rook;
+    board->board[king_square] = king;
+    board->board[rook_square] = rook;
 }
 
 static inline void move_enpassant(Board *board, int start, int end) {
@@ -127,12 +157,42 @@ static inline void move_promotion(Board *board, int square, int piece) {
     int pawn = board->board[square];
     Bitboard bitboard = create_bit(square);
 
-    if (get_color(piece) == BLACK) {
+    if (get_color(pawn) == BLACK) {
         piece += 8;
     }
 
     board->pieces[pawn] ^= bitboard;
     board->pieces[piece] ^= bitboard;
+
+    board->board[square] = piece;
+}
+
+static inline void unmove_castle(Board *board, int start, int end) {
+    int side = start < end;
+    int king_square = start + (side ? 2 : -2);
+    int rook_square = start + (side ? 1 : -1);
+    int king = board->board[king_square];
+    int rook = king - 2;
+    Bitboard kings = create_bit(start) | create_bit(king_square);
+    Bitboard rooks = create_bit(end) | create_bit(rook_square);
+
+    board->pieces[king] ^= kings;
+    board->pieces[rook] ^= rooks;
+    board->occupancies[get_color(king)] ^= kings | rooks;
+    board->occupancies[2] ^= kings | rooks;
+
+    board->board[start] = king;
+    board->board[end] = rook;
+    board->board[king_square] = NO_PIECE;
+    board->board[rook_square] = NO_PIECE;
+}
+
+static inline void place_piece(Board *board, int square, int piece) {
+    Bitboard bitboard = create_bit(square);
+
+    board->pieces[piece] ^= bitboard;
+    board->occupancies[get_color(piece)] ^= bitboard;
+    board->occupancies[2] ^= bitboard;
 
     board->board[square] = piece;
 }

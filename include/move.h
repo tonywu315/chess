@@ -21,12 +21,15 @@
 */
 typedef uint16_t Move;
 
-Move encode_move(int start, int end, int flag, int promotion);
-void move(Board *board, Move move);
-void unmove(Board *board, Move move);
+void make_move(Board *board, Move move);
+void unmake_move(Board *board, Move move);
 
 // int move_legal(Board *board, Move move);
 // int move_computer(int depth);
+
+static inline Move encode_move(int start, int end, int flag, int promotion) {
+    return start | (end << 6) | (flag << 12) | ((promotion - KNIGHT) << 14);
+}
 
 static inline int get_move_start(Move move) { return move & 0x3F; }
 static inline int get_move_end(Move move) { return (move >> 6) & 0x3F; }

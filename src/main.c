@@ -1,6 +1,5 @@
+#include "attacks.h"
 #include "bitboard.h"
-#include "move_generation.h"
-#include "move.h"
 
 /* Start game */
 int main(void) {
@@ -8,6 +7,8 @@ int main(void) {
 
     start_board(&board);
     init_attacks();
+
+    print_board(board, 0);
 
     return SUCCESS;
 }
