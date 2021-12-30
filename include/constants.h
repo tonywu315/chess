@@ -16,9 +16,13 @@
 #define MAX_PLY 64
 #define MAX_MOVES 1024
 #define ARRAY_SIZE 128
-#define ALL_CASTLE 15
 #define SUCCESS 0
 #define FAILURE 1
+
+#define CASTLE_WK 1
+#define CASTLE_WQ 2
+#define CASTLE_BK 4
+#define CASTLE_BQ 8
 
 /* Debug macro only appears if DEBUG is passed in */
 /* Compiler optimizes out functions if DEBUG_VALUE is not set */
@@ -29,7 +33,7 @@
 #endif
 
 /* Prints debug information */
-#define debug_printf(fmt, ...)                                                  \
+#define debug_printf(fmt, ...)                                                 \
     do {                                                                       \
         if (DEBUG_VALUE)                                                       \
             fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
@@ -47,49 +51,55 @@
     } while (0)
 
 typedef uint64_t Bitboard;
-typedef uint_fast8_t U8;
 typedef unsigned long long U64;
 
+typedef struct state {
+    int capture;
+    int castling;
+    int enpassant;
+    int draw_ply;
+} State;
+
 typedef struct board {
-    Bitboard pieces[12];
+    State state[MAX_MOVES];
+    Bitboard pieces[16];
     Bitboard occupancies[3];
-    U8 player;
-    U8 castle;
-    U8 enpassant;
-    U8 draw_ply;
+    int board[64];
+    int player;
+    int ply;
 } Board;
 
-typedef struct oldboard {
-    U8 colors[ARRAY_SIZE];
-    U8 pieces[ARRAY_SIZE];
-    U8 player;    /* Player to move */
-    U8 castle;    /* 0-15 number that represents castling availability */
-    U8 enpassant; /* En passant square */
-    U8 ply;       /* Keeps track for 50 move rule */
-    U8 king[2];   /* Location of kings */
-} OldBoard;
+// typedef struct oldboard {
+//     int colors[ARRAY_SIZE];
+//     int pieces[ARRAY_SIZE];
+//     int player;    /* Player to move */
+//     int castle;    /* 0-15 number that represents castling availability */
+//     int enpassant; /* En passant square */
+//     int ply;       /* Keeps track for 50 move rule */
+//     int king[2];   /* Location of kings */
+// } OldBoard;
 
-extern OldBoard oldboard;
-typedef struct move {
-    U8 start;
-    U8 end;
-    U8 captured;
-    U8 flag;
-    U8 castle;
-    U8 enpassant;
-    U8 ply;
-} Move;
+// extern OldBoard oldboard;
+// typedef struct move {
+//     int start;
+//     int end;
+//     int captured;
+//     int flag;
+//     int castle;
+//     int enpassant;
+//     int ply;
+// } OldMove;
 
-extern Move game_moves[MAX_MOVES]; /* May need to reallocate rarely */
-extern int game_position;
+// extern OldMove game_moves[MAX_MOVES]; /* May need to reallocate rarely */
+// extern int game_position;
 
-typedef struct line {
-    int length;
-    Move moves[MAX_PLY];
-} Line;
+// typedef struct line {
+//     int length;
+//     OldMove moves[MAX_PLY];
+// } Line;
 
 // clang-format off
-enum square {
+enum Square {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
     A3, B3, C3, D3, E3, F3, G3, H3,
@@ -101,34 +111,29 @@ enum square {
     NO_SQUARE
 };
 
-// enum square {
-//     A1 = 0  , B1, C1, D1, E1, F1, G1, H1,
-//     A2 = 16 , B2, C2, D2, E2, F2, G2, H2,
-//     A3 = 32 , B3, C3, D3, E3, F3, G3, H3,
-//     A4 = 48 , B4, C4, D4, E4, F4, G4, H4,
-//     A5 = 64 , B5, C5, D5, E5, F5, G5, H5,
-//     A6 = 80 , B6, C6, D6, E6, F6, G6, H6,
-//     A7 = 96 , B7, C7, D7, E7, F7, G7, H7,
-//     A8 = 112, B8, C8, D8, E8, F8, G8, H8
-// };
-
-enum color {
-    EMPTY_COLOR,
+enum Color {
     WHITE,
-    BLACK
+    BLACK,
+    NO_COLOR
 };
 
-enum piece {
-    EMPTY_PIECE,
+enum Piece_type {
     PAWN,
     KNIGHT,
     BISHOP,
     ROOK,
     QUEEN,
-    KING
+    KING,
+    NO_PIECE_TYPE
 };
 
-enum direction {
+enum Piece {
+    W_PAWN = PAWN,     W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+    B_PAWN = PAWN + 8, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
+    NO_PIECE = 15,
+};
+
+enum Direction {
     UPRIGHT = 9,
     UP = 8,
     UPLEFT = 7,
@@ -139,62 +144,53 @@ enum direction {
     DOWNLEFT = -9
 };
 
-// enum direction {
-//     UPRIGHT = 17,
-//     UP = 16,
-//     UPLEFT = 15,
-//     RIGHT = 1,
-//     LEFT = -1,
-//     DOWNRIGHT = -15,
-//     DOWN = -16,
-//     DOWNLEFT = -17
+// enum Flag {
+//     NORMAL = 0,
+//     CAPTURE = 3,
+//     DOUBLE = 5,
+//     ENPASSANT = 6,
+//     NULLMOVE = 7,
+//     CASTLE_WK = 1,
+//     CASTLE_WQ = 2,
+//     CASTLE_BK = 4,
+//     CASTLE_BQ = 8,
+//     PROMOTION_N = 9,
+//     PROMOTION_B = 10,
+//     PROMOTION_R = 11,
+//     PROMOTION_Q = 12
 // };
 
-enum flag {
-    NORMAL = 0,
-    CAPTURE = 3,
-    DOUBLE = 5,
-    ENPASSANT = 6,
-    NULLMOVE = 7,
-    CASTLE_WK = 1,
-    CASTLE_WQ = 2,
-    CASTLE_BK = 4,
-    CASTLE_BQ = 8,
-    PROMOTION_N = 9,
-    PROMOTION_B = 10,
-    PROMOTION_R = 11,
-    PROMOTION_Q = 12
-};
-
-enum result {
+enum Result {
     NONE,
     WHITE_WIN,
     BLACK_WIN,
     DRAW
 };
-// clang-format on
+
+static inline int get_piece(int piece) { return piece & 7; }
+static inline int get_color(int piece) { return piece >> 3; }
 
 /* Bitboard Functions */
 
-static inline int get_bit(Bitboard bitboard, U8 square) {
+static inline int get_bit(Bitboard bitboard, int square) {
     return bitboard & (UINT64_C(1) << square) ? 1 : 0;
 }
 
-static inline void set_bit(Bitboard *bitboard, U8 square) {
+static inline void set_bit(Bitboard *bitboard, int square) {
     *bitboard |= UINT64_C(1) << square;
 }
 
-static inline void flip_bit(Bitboard *bitboard, U8 square) {
+static inline void flip_bit(Bitboard *bitboard, int square) {
     *bitboard ^= UINT64_C(1) << square;
 }
 
-static inline void clear_bit(Bitboard *bitboard, U8 square) {
+static inline void clear_bit(Bitboard *bitboard, int square) {
     *bitboard &= ~(UINT64_C(1) << square);
 }
 
-static inline Bitboard create_bit(U8 square) { return UINT64_C(1) << square; }
+static inline Bitboard create_bit(int square) { return UINT64_C(1) << square; }
 
-static inline int in_bounds(U8 start, int direction) {
+static inline int in_bounds(int start, int direction) {
     int end = start + direction;
     int distance = abs((start / 8 - end / 8) - (start % 8 - end % 8));
     return end >= A1 && end <= H8 && distance <= 2;
@@ -224,24 +220,42 @@ static inline int get_sparse_population(Bitboard bitboard) {
     return count;
 }
 
+// int pop_lsb(Bitboard *bitboard) {
+//     int lsb = get_lsb(*bitboard);
+//     *bitboard &= *bitboard - 1;
+//     return lsb;
+// }
+
+// int get_lsb(Bitboard bitboard) {
+//     static const int lsb_table[64] = {
+//         63, 30, 3,  32, 59, 14, 11, 33, 60, 24, 50, 9,  55, 19, 21, 34,
+//         61, 29, 2,  53, 51, 23, 41, 18, 56, 28, 1,  43, 46, 27, 0,  35,
+//         62, 31, 58, 4,  5,  49, 54, 6,  15, 52, 12, 40, 7,  42, 45, 16,
+//         25, 57, 48, 13, 10, 39, 8,  44, 20, 47, 38, 22, 17, 37, 36, 26};
+
+//     bitboard ^= bitboard - 1;
+//     return lsb_table[((int)bitboard ^ (bitboard >> 32)) * 0x78291ACF >> 26];
+// }
+
 /* 0x88 Board Representation (16x8 array) */
 
-/* Returns file and rank of square (number from 0 to 7) */
-static inline int get_file(U8 square) { return square & 7; }
-static inline int get_rank(U8 square) { return square >> 4; }
+// /* Returns file and rank of square (number from 0 to 7) */
+// static inline int get_file(int square) { return square & 7; }
+// static inline int get_rank(int square) { return square >> 4; }
 
-/* Returns square given file and rank */
-static inline U8 get_square(U8 file, U8 rank) { return file + rank * 16; }
+// /* Returns square given file and rank */
+// static inline int get_square(int file, int rank) { return file + rank * 16; }
 
-/* Returns true if square is outside the board */
-static inline bool invalid_square(U8 square) { return square & 0x88; }
+// /* Returns true if square is outside the board */
+// static inline bool invalid_square(int square) { return square & 0x88; }
 
-/* Returns true if file or rank is valid */
-static inline bool valid_row(U8 row) { return row <= 7; }
+// /* Returns true if file or rank is valid */
+// static inline bool valid_row(int row) { return row <= 7; }
 
-/* Checks if a certain player has a certain piece at square */
-static inline bool exists(U8 square, U8 player, U8 piece) {
-    return oldboard.pieces[square] == piece && oldboard.colors[square] == player;
-}
+// /* Checks if a certain player has a certain piece at square */
+// static inline bool exists(int square, int player, int piece) {
+//     return oldboard.pieces[square] == piece &&
+//            oldboard.colors[square] == player;
+// }
 
 #endif

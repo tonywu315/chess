@@ -1,268 +1,222 @@
 #include "move_generation.h"
-#include "move.h"
+#include "bitboard.h"
 
-static const char vectors[5][8] = {
-    {33, 31, 18, 14, -14, -18, -31, -33},
-    {UPRIGHT, UPLEFT, DOWNRIGHT, DOWNLEFT},
-    {UP, RIGHT, LEFT, DOWN},
-    {UPRIGHT, UP, UPLEFT, RIGHT, LEFT, DOWNRIGHT, DOWN, DOWNLEFT},
-    {UPRIGHT, UP, UPLEFT, RIGHT, LEFT, DOWNRIGHT, DOWN, DOWNLEFT},
-};
+typedef struct magics {
+    Bitboard *attacks;
+    Bitboard mask;
+    Bitboard magic;
+    int shift;
+} Magic;
 
-static int generate_pawn_move(Move *moves, int count, U8 start);
-static int generate_piece_move(Move *moves, int count, U8 start, U8 piece);
+static const Bitboard MASK_FILE_A = UINT64_C(0xFEFEFEFEFEFEFEFE);
+static const Bitboard MASK_FILE_H = UINT64_C(0x7F7F7F7F7F7F7F7F);
+static const Bitboard MASK_FILE_AB = UINT64_C(0xFCFCFCFCFCFCFCFC);
+static const Bitboard MASK_FILE_HG = UINT64_C(0x3F3F3F3F3F3F3F3F);
+static const Bitboard EMPTY = UINT64_C(0);
 
-/* Creates a move with move information and current board information */
-void create_move(Move *move, U8 start, U8 end, U8 flag) {
-    move->start = start;
-    move->end = end;
-    move->captured = EMPTY_PIECE;
-    move->flag = flag;
-    move->castle = board.castle;
-    move->enpassant = board.enpassant;
-    move->ply = board.ply;
+/* Lookup tables and Fancy Magic Bitboards */
+Bitboard pawn_attacks[2][64];
+Bitboard knight_attacks[64];
+Bitboard king_attacks[64];
+Magic rook_magics[64];
+Magic bishop_magics[64];
+Bitboard rook_attacks[102400];
+Bitboard bishop_attacks[5248];
 
-    if (board.colors[move->end] == 3 - board.player) {
-        move->captured = board.pieces[move->end];
+static Bitboard init_pawn_attacks(int square, int player);
+static Bitboard init_knight_attacks(int square);
+static Bitboard init_king_attacks(int square);
+
+static void init_magics(int piece);
+static Bitboard get_rook_mask(int square);
+static Bitboard get_bishop_mask(int square);
+static Bitboard get_slider_attack(int square, Bitboard occupancy, int piece);
+static inline Bitboard get_rook_attacks(int square, Bitboard occupancy);
+static inline Bitboard get_bishop_attacks(int square, Bitboard occupancy);
+static Bitboard sparse_random();
+
+void init_attacks() {
+    for (int square = 0; square < 64; square++) {
+        pawn_attacks[WHITE][square] = init_pawn_attacks(square, WHITE);
+        pawn_attacks[BLACK][square] = init_pawn_attacks(square, BLACK);
+        knight_attacks[square] = init_knight_attacks(square);
+        king_attacks[square] = init_king_attacks(square);
     }
+
+    init_magics(ROOK);
+    init_magics(BISHOP);
 }
 
-/* Checks if player is attacking square */
-int is_attacking(U8 square, U8 player) {
-    /* Returns false if square is invalid */
-    if (invalid_square(square)) {
-        return false;
-    }
-
-    /* Checks if pawn is attacking */
-    int back = player == WHITE ? DOWN : UP;
-    if ((!invalid_square(square + back + RIGHT) &&
-         exists(square + back + RIGHT, player, PAWN)) ||
-        (!invalid_square(square + back + LEFT) &&
-         exists(square + back + LEFT, player, PAWN))) {
-        return true;
-    }
-
-    for (int i = 0; i < 8; i++) {
-        /* Checks if knight or king is attacking */
-        if ((!invalid_square(square + vectors[KNIGHT - 2][i]) &&
-             exists(square + vectors[KNIGHT - 2][i], player, KNIGHT)) ||
-            (!invalid_square(square + vectors[KING - 2][i]) &&
-             exists(square + vectors[KING - 2][i], player, KING))) {
-            return true;
-        }
-
-        /* Checks if queen is attacking */
-        for (U8 end = square + vectors[QUEEN - 2][i]; !invalid_square(end);
-             end += vectors[QUEEN - 2][i]) {
-            if (exists(end, player, QUEEN)) {
-                return true;
-            }
-            if (board.colors[end]) {
-                break;
-            }
-        }
-    }
-
-    /* Checks if rook or bishop are attacking */
-    for (int i = 0; i < 4; i++) {
-        for (U8 end = square + vectors[ROOK - 2][i]; !invalid_square(end);
-             end += vectors[ROOK - 2][i]) {
-            if (exists(end, player, ROOK)) {
-                return true;
-            }
-            if (board.colors[end]) {
-                break;
-            }
-        }
-        for (U8 end = square + vectors[BISHOP - 2][i]; !invalid_square(end);
-             end += vectors[BISHOP - 2][i]) {
-            if (exists(end, player, BISHOP)) {
-                return true;
-            }
-            if (board.colors[end]) {
-                break;
-            }
-        }
-    }
-
-    return false;
+int is_attacked(Board board, int square, int player) {
+    int shift = player == WHITE ? 0 : 6;
+    return (pawn_attacks[2 - player][square] & board.pieces[PAWN + shift]) ||
+           (knight_attacks[square] & board.pieces[KNIGHT + shift]) ||
+           (king_attacks[square] & board.pieces[KING + shift]) ||
+           (get_rook_attacks(square, board.occupancies[2]) &
+            (board.pieces[ROOK + shift] | board.pieces[QUEEN + shift])) ||
+           (get_bishop_attacks(square, board.occupancies[2]) &
+            (board.pieces[BISHOP + shift] | board.pieces[QUEEN + shift]));
 }
 
-/* Check if player is in check */
-int in_check(U8 player) {
-    return is_attacking(board.king[player - 1], 3 - player);
-}
+static Bitboard init_pawn_attacks(int square, int player) {
+    Bitboard pawn = create_bit(square);
 
-/* Generates pseudo-legal moves (checks are not considered) */
-int generate_moves(Move *moves) {
-    Move move;
-    U8 enemy = 3 - board.player;
-    int count = 0;
-
-    /* Checks castle conditions for all 4 possible castling moves */
-    if (board.player == WHITE) {
-        if (board.castle & CASTLE_WK && board.pieces[F1] == EMPTY_PIECE &&
-            board.pieces[G1] == EMPTY_PIECE && !is_attacking(E1, enemy) &&
-            !is_attacking(F1, enemy) && !is_attacking(G1, enemy)) {
-            create_move(&move, E1, G1, CASTLE_WK);
-            moves[count++] = move;
-        }
-        if (board.castle & CASTLE_WQ && board.pieces[D1] == EMPTY_PIECE &&
-            board.pieces[C1] == EMPTY_PIECE &&
-            board.pieces[B1] == EMPTY_PIECE && !is_attacking(E1, enemy) &&
-            !is_attacking(D1, enemy) && !is_attacking(C1, enemy)) {
-            create_move(&move, E1, C1, CASTLE_WQ);
-            moves[count++] = move;
-        }
+    if (player == WHITE) {
+        return ((pawn << 9) & MASK_FILE_A) | ((pawn << 7) & MASK_FILE_H);
     } else {
-        if (board.castle & CASTLE_BK && board.pieces[F8] == EMPTY_PIECE &&
-            board.pieces[G8] == EMPTY_PIECE && !is_attacking(E8, enemy) &&
-            !is_attacking(F8, enemy) && !is_attacking(G8, enemy)) {
-            create_move(&move, E8, G8, CASTLE_BK);
-            moves[count++] = move;
-        }
-        if (board.castle & CASTLE_BQ && board.pieces[D8] == EMPTY_PIECE &&
-            board.pieces[C8] == EMPTY_PIECE &&
-            board.pieces[B8] == EMPTY_PIECE && !is_attacking(E8, enemy) &&
-            !is_attacking(D8, enemy) && !is_attacking(C8, enemy)) {
-            create_move(&move, E8, C8, CASTLE_BQ);
-            moves[count++] = move;
-        }
+        return ((pawn >> 7) & MASK_FILE_A) | ((pawn >> 9) & MASK_FILE_H);
     }
-
-    /* Iterates over all coordinates */
-    for (U8 start = A1; start <= H8; start++) {
-        /* Only generates moves for the player to move */
-        if (board.colors[start] == board.player) {
-            /* Generates moves for each piece type */
-            U8 piece = board.pieces[start];
-            if (piece == PAWN) {
-                count = generate_pawn_move(moves, count, start);
-            } else {
-                count = generate_piece_move(moves, count, start, piece);
-            }
-        }
-    }
-
-    return count;
 }
 
-/* Generates legal moves (TODO: make more efficient) */
-int generate_legal_moves(Move *moves) {
-    Move pseudo_moves[MAX_MOVES];
-    int count = 0, pseudo_count = generate_moves(pseudo_moves);
+static Bitboard init_knight_attacks(int square) {
+    Bitboard knight = create_bit(square);
 
-    for (int i = 0; i < pseudo_count; i++) {
-        move_piece(&pseudo_moves[i]);
-        if (!in_check(3 - board.player)) {
-            moves[count++] = pseudo_moves[i];
-        }
-        unmove_piece();
-    }
+    set_bit(&knight, square);
 
-    return count;
+    Bitboard left1 = (knight >> 1) & MASK_FILE_H;
+    Bitboard left2 = (knight >> 2) & MASK_FILE_HG;
+    Bitboard right1 = (knight << 1) & MASK_FILE_A;
+    Bitboard right2 = (knight << 2) & MASK_FILE_AB;
+    Bitboard height1 = left1 | right1;
+    Bitboard height2 = left2 | right2;
+
+    return (height1 << 16) | (height1 >> 16) | (height2 << 8) | (height2 >> 8);
 }
 
-/* Generate pawn moves */
-static int generate_pawn_move(Move *moves, int count, U8 start) {
-    Move move;
+static Bitboard init_king_attacks(int square) {
+    Bitboard king = create_bit(square);
+    Bitboard attacks =
+        ((king << 1) & MASK_FILE_A) | ((king >> 1) & MASK_FILE_H);
 
-    /* Pawn direction and second square depend on color */
-    int direction = UP, second = 1;
-    if (board.player == BLACK) {
-        direction = DOWN, second = 6;
-    }
+    king |= attacks;
+    attacks |= (king << 8) | (king >> 8);
 
-    /* Checks that the next square is empty */
-    U8 end = start + direction;
-    if (!board.colors[end]) {
-        /* Adds all promotion moves */
-        if (get_rank(start) == 7 - second) {
-            for (int i = PROMOTION_N; i <= PROMOTION_Q; i++) {
-                create_move(&move, start, end, i);
-                moves[count++] = move;
-            }
+    return attacks;
+}
+
+static void init_magics(int piece) {
+    Bitboard occupancy[4096], attacks[4096], bitboard = EMPTY;
+    int repeated[4096] = {0}, attacks_index = 0, found = 0;
+
+    for (int square = A1; square <= H8; square++) {
+        Magic magic;
+
+        if (piece == ROOK) {
+            magic.attacks = &rook_attacks[attacks_index];
+            magic.mask = get_rook_mask(square);
         } else {
-            /* Adds move and double move if on special rank */
-            create_move(&move, start, end, NORMAL);
-            moves[count++] = move;
-            if (get_rank(start) == second && !board.colors[end + direction]) {
-                create_move(&move, start, end + direction, DOUBLE);
-                moves[count++] = move;
+            magic.attacks = &bishop_attacks[attacks_index];
+            magic.mask = get_bishop_mask(square);
+        }
+
+        magic.shift = 64 - get_population(magic.mask);
+
+        int count = 0;
+        do {
+            occupancy[count] = bitboard;
+            attacks[count++] = get_slider_attack(square, bitboard, piece);
+            bitboard = (bitboard - magic.mask) & magic.mask;
+        } while (bitboard);
+
+        for (int i = 0; i < count;) {
+            magic.magic = sparse_random();
+            if (get_population((magic.magic * magic.mask) >> 56) < 6) {
+                continue;
             }
-        }
-    }
 
-    /* Adds pawn attacks to the right and left and en passant */
-    int directions[2] = {RIGHT, LEFT};
-    for (int i = 0; i < 2; i++) {
-        U8 attack = end + directions[i];
-        if (!invalid_square(attack) && board.colors[attack] != board.player) {
-            if (board.colors[attack] != EMPTY_COLOR) {
-                /* Adds promotion capture moves */
-                if (get_rank(start) == 7 - second) {
-                    for (int j = PROMOTION_N; j <= PROMOTION_Q; j++) {
-                        create_move(&move, start, attack, j);
-                        moves[count++] = move;
-                    }
-                } else {
-                    create_move(&move, start, attack, CAPTURE);
-                    moves[count++] = move;
-                }
-            } else if (attack == board.enpassant) {
-                create_move(&move, start, attack, ENPASSANT);
-                moves[count++] = move;
-            }
-        }
-    }
+            found += 1;
+            for (i = 0; i < count; i++) {
+                unsigned int index =
+                    (int)(((occupancy[i] & magic.mask) * magic.magic) >>
+                          magic.shift);
 
-    return count;
-}
-
-/* Generate moves for other pieces */
-static int generate_piece_move(Move *moves, int count, U8 start, U8 piece) {
-    Move move;
-
-    /* Iterate over all directions*/
-    if (piece == KNIGHT || piece == KING) {
-        for (int i = 0; i < 8; i++) {
-            /* Adds normal move or capture move */
-            U8 end = start + vectors[piece - 2][i];
-            if (!invalid_square(end)) {
-                if (board.colors[end] == EMPTY_COLOR) {
-                    create_move(&move, start, end, NORMAL);
-                    moves[count++] = move;
-                } else if (board.colors[end] == 3 - board.player) {
-                    create_move(&move, start, end, CAPTURE);
-                    moves[count++] = move;
-                }
-            }
-        }
-    } else {
-        /* Number of directions to check */
-        int directions = 8;
-        if (piece == ROOK || piece == BISHOP) {
-            directions = 4;
-        }
-        for (int i = 0; i < directions; i++) {
-            for (U8 end = start + vectors[piece - 2][i]; !invalid_square(end);
-                 end += vectors[piece - 2][i]) {
-                /* Adds normal move or capture move */
-                if (board.colors[end] == EMPTY_COLOR) {
-                    create_move(&move, start, end, NORMAL);
-                    moves[count++] = move;
-                } else if (board.colors[end] == 3 - board.player) {
-                    create_move(&move, start, end, CAPTURE);
-                    moves[count++] = move;
-                }
-                /* Stops traversal once a piece is hit*/
-                if (board.colors[end]) {
+                if (repeated[index] < found) {
+                    repeated[index] = found;
+                    magic.attacks[index] = attacks[i];
+                } else if (magic.attacks[index] != attacks[i]) {
                     break;
                 }
             }
         }
+
+        attacks_index += 1 << (64 - magic.shift);
+        if (piece == ROOK) {
+            rook_magics[square] = magic;
+        } else {
+            bishop_magics[square] = magic;
+        }
+    }
+}
+
+static Bitboard get_rook_mask(int square) {
+    const Bitboard files = UINT64_C(0x0001010101010100);
+    const Bitboard ranks = UINT64_C(0x7E);
+
+    Bitboard attacks = (files << (square % 8)) | (ranks << (8 * (square / 8)));
+    clear_bit(&attacks, square);
+
+    return attacks;
+}
+
+static Bitboard get_bishop_mask(int square) {
+    Bitboard attacks = EMPTY;
+    int rank = square / 8, file = square % 8, r, f;
+
+    for (r = rank + 1, f = file + 1; r <= 6 && f <= 6; r++, f++) {
+        set_bit(&attacks, r * 8 + f);
+    }
+    for (r = rank + 1, f = file - 1; r <= 6 && f >= 1; r++, f--) {
+        set_bit(&attacks, r * 8 + f);
+    }
+    for (r = rank - 1, f = file + 1; r >= 1 && f <= 6; r--, f++) {
+        set_bit(&attacks, r * 8 + f);
+    }
+    for (r = rank - 1, f = file - 1; r >= 1 && f >= 1; r--, f--) {
+        set_bit(&attacks, r * 8 + f);
     }
 
-    return count;
+    return attacks;
+}
+
+static Bitboard get_slider_attack(int square, Bitboard occupancy, int piece) {
+    Bitboard attacks = EMPTY;
+    int rook_direction[4] = {UP, DOWN, LEFT, RIGHT};
+    int bishop_direction[4] = {UPRIGHT, UPLEFT, DOWNRIGHT, DOWNLEFT};
+
+    for (int i = 0; i < 4; i++) {
+        int direction = piece == ROOK ? rook_direction[i] : bishop_direction[i];
+        int current = square;
+
+        while (!get_bit(occupancy, current) && in_bounds(current, direction)) {
+            set_bit(&attacks, current + direction);
+            current += direction;
+        }
+    }
+
+    return attacks;
+}
+
+static inline Bitboard get_rook_attacks(int square, Bitboard occupancy) {
+    Magic m = rook_magics[square];
+    return m.attacks[((occupancy & m.mask) * m.magic) >> m.shift];
+}
+
+static inline Bitboard get_bishop_attacks(int square, Bitboard occupancy) {
+    Magic m = bishop_magics[square];
+    return m.attacks[((occupancy & m.mask) * m.magic) >> m.shift];
+}
+
+static inline Bitboard sparse_random() {
+    /* Fastest seed in first 100,000 seeds */
+    static Bitboard seed = UINT64_C(0xAE793F42471A8799);
+    Bitboard rand = ~EMPTY;
+
+    for (int i = 0; i < 3; i++) {
+        seed ^= seed >> 12;
+        seed ^= seed << 25;
+        seed ^= seed >> 27;
+        rand &= seed * UINT64_C(0x2545F4914F6CDD1D);
+    }
+
+    return rand;
 }

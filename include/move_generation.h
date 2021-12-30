@@ -3,10 +3,7 @@
 
 #include "constants.h"
 
-void create_move(Move *move, U8 start, U8 end, U8 flag);
-int is_attacking(U8 square, U8 player);
-int in_check(U8 player);
-int generate_moves(Move *moves);
-int generate_legal_moves(Move *moves);
+void init_attacks();
+int is_attacked(Board board, int square, int player);
 
 #endif

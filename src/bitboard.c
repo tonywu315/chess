@@ -3,13 +3,18 @@
 #include "move_generation.h"
 
 void init_board(Board *board) {
+    State state = {NO_PIECE, 15, NO_SQUARE, 0};
+
+    board->state[0] = state;
     memset(board->pieces, 0, sizeof(board->pieces));
     memset(board->occupancies, 0, sizeof(board->occupancies));
 
+    for (int square = A1; square <= H8; square++) {
+        board->board[square] = NO_PIECE;
+    }
+
     board->player = WHITE;
-    board->castle = CASTLE_WK | CASTLE_WQ | CASTLE_BK | CASTLE_BQ;
-    board->enpassant = NO_SQUARE;
-    board->draw_ply = 0;
+    board->ply = 0;
 }
 
 void start_board(Board *board) {
@@ -31,12 +36,12 @@ void print_board(Board board, int score) {
             int square = rank * 8 + file;
 
             if (get_bit(board.occupancies[2], square)) {
-                for (U8 piece = PAWN - 1; piece < KING; piece++) {
+                for (int piece = PAWN; piece <= KING; piece++) {
                     if (get_bit(board.pieces[piece], square)) {
                         printf("%c ", pieces[piece]);
                         break;
                     }
-                    if (get_bit(board.pieces[piece + 6], square)) {
+                    if (get_bit(board.pieces[piece + 8], square)) {
                         printf("%c ", tolower(pieces[piece]));
                         break;
                     }
@@ -50,7 +55,7 @@ void print_board(Board board, int score) {
     if (board.player == WHITE) {
         printf("\n   a b c d e f g h\n\n");
     } else {
-        printf("\n  h g f e d c b a\n\n");
+        printf("\n   h g f e d c b a\n\n");
     }
 
     /* Print score unless end of game */
@@ -62,16 +67,18 @@ void print_board(Board board, int score) {
             printf("Evaluation: %d\n", score);
         }
 
-        printf("Player to move: %s\n", board.player - 1 ? "Black" : "White");
+        printf("Player to move: %s\n",
+               board.player == WHITE ? "White" : "Black");
     }
 
     if (DEBUG_VALUE) {
-        printf("\nCastling: %c%c%c%c\n", board.castle & CASTLE_WK ? 'K' : '-',
-               board.castle & CASTLE_WQ ? 'Q' : '-',
-               board.castle & CASTLE_BK ? 'k' : '-',
-               board.castle & CASTLE_BQ ? 'q' : '-');
-        printf("Enpassant: %s\n", board.enpassant != NO_SQUARE
-                                      ? get_coordinates(board.enpassant)
+        State state = board.state[board.ply];
+        printf("\nCastling: %c%c%c%c\n", state.castling & CASTLE_WK ? 'K' : '-',
+               state.castling & CASTLE_WQ ? 'Q' : '-',
+               state.castling & CASTLE_BK ? 'k' : '-',
+               state.castling & CASTLE_BQ ? 'q' : '-');
+        printf("Enpassant: %s\n", state.enpassant != NO_SQUARE
+                                      ? get_coordinates(state.enpassant)
                                       : "none");
     }
 }
@@ -97,14 +104,16 @@ void print_bitboard(Bitboard bitboard) {
 void load_fen(Board *board, const char *fen) {
     int index = 0, square = A8;
     const unsigned char indices[] = {
-        ['P'] = 0, ['N'] = 1, ['B'] = 2, ['R'] = 3, ['Q'] = 4,  ['K'] = 5,
-        ['p'] = 6, ['n'] = 7, ['b'] = 8, ['r'] = 9, ['q'] = 10, ['k'] = 11};
+        ['P'] = W_PAWN,   ['N'] = W_KNIGHT, ['B'] = W_BISHOP, ['R'] = W_ROOK,
+        ['Q'] = W_QUEEN,  ['K'] = W_KING,   ['p'] = B_PAWN,   ['n'] = B_KNIGHT,
+        ['b'] = B_BISHOP, ['r'] = B_ROOK,   ['q'] = B_QUEEN,  ['k'] = B_KING};
 
     init_board(board);
 
     /* Adds piece depending on character */
     do {
         if (isalpha(fen[index])) {
+            board->board[square] = indices[(int)fen[index]];
             set_bit(&board->pieces[indices[(int)fen[index]]], square++);
         } else if (fen[index] == '/') {
             square -= 16;
@@ -118,20 +127,20 @@ void load_fen(Board *board, const char *fen) {
     index += 2;
 
     /* Castle rights */
-    board->castle = 0;
+    board->state[0].castling = 0;
     do {
         switch (fen[index]) {
         case 'K':
-            board->castle |= CASTLE_WK;
+            board->state[0].castling |= CASTLE_WK;
             break;
         case 'Q':
-            board->castle |= CASTLE_WQ;
+            board->state[0].castling |= CASTLE_WQ;
             break;
         case 'k':
-            board->castle |= CASTLE_BK;
+            board->state[0].castling |= CASTLE_BK;
             break;
         case 'q':
-            board->castle |= CASTLE_BQ;
+            board->state[0].castling |= CASTLE_BQ;
             break;
         }
     } while (fen[++index] != ' ');
@@ -140,20 +149,21 @@ void load_fen(Board *board, const char *fen) {
     if (fen[++index] == '-') {
         index += 2;
     } else {
-        board->enpassant = fen[index] - 'a' + 8 * (fen[index + 1] - '1');
+        board->state[0].enpassant =
+            fen[index] - 'a' + 8 * (fen[index + 1] - '1');
         index += 3;
     }
 
-    board->draw_ply = fen[index] - '0';
+    board->state[0].draw_ply = fen[index] - '0';
 
-    for (U8 piece = PAWN - 1; piece < KING; piece++) {
+    for (int piece = PAWN; piece <= KING; piece++) {
         board->occupancies[0] |= board->pieces[piece];
-        board->occupancies[1] |= board->pieces[piece + 6];
+        board->occupancies[1] |= board->pieces[piece + 8];
     }
     board->occupancies[2] = board->occupancies[0] | board->occupancies[1];
 }
 
-char *get_coordinates(U8 square) {
+char *get_coordinates(int square) {
     // clang-format off
     static char coordinates[64][3] = {
         "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
