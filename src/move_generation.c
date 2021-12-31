@@ -2,11 +2,11 @@
 #include "attacks.h"
 #include "bitboard.h"
 
-static void generate_pawn_moves(Board board, Move *moves, int *count);
+static void generate_pawn_moves(const Board *board, Move *moves, int *count);
 
-int generate_moves(Board board, Move *moves) {
+int generate_moves(const Board *board, Move *moves) {
     int count = 0;
-    Bitboard pieces = board.occupancies[board.player];
+    Bitboard pieces = board->occupancies[board->player];
 
     while (pieces) {
         int start = pop_lsb(&pieces);
@@ -19,24 +19,24 @@ int generate_moves(Board board, Move *moves) {
 
     generate_pawn_moves(board, moves, &count);
 
-    int castling = board.state[board.ply].castling;
+    int castling = board->state[board->ply].castling;
     if (castling) {
-        if (board.player == WHITE) {
+        if (board->player == WHITE) {
             if ((CASTLE_WK & castling) &&
-                !(board.occupancies[2] & UINT64_C(0x60))) {
+                !(board->occupancies[2] & UINT64_C(0x60))) {
                 moves[count++] = UINT64_C(0xF1C4);
             }
             if ((CASTLE_WQ & castling) &&
-                !(board.occupancies[2] & UINT64_C(0xE))) {
+                !(board->occupancies[2] & UINT64_C(0xE))) {
                 moves[count++] = UINT64_C(0xF004);
             }
         } else {
             if ((CASTLE_BK & castling) &&
-                !(board.occupancies[2] & UINT64_C(0x6000000000000000))) {
+                !(board->occupancies[2] & UINT64_C(0x6000000000000000))) {
                 moves[count++] = UINT64_C(0xFFFC);
             }
             if ((CASTLE_BQ & castling) &&
-                !(board.occupancies[2] & UINT64_C(0xE00000000000000))) {
+                !(board->occupancies[2] & UINT64_C(0xE00000000000000))) {
                 moves[count++] = UINT64_C(0xFE3C);
             }
         }
@@ -45,11 +45,11 @@ int generate_moves(Board board, Move *moves) {
     return count;
 }
 
-static void generate_pawn_moves(Board board, Move *moves, int *count) {
+static void generate_pawn_moves(const Board *board, Move *moves, int *count) {
     Bitboard rank3 = UINT64_C(0xFF0000), rank7 = UINT64_C(0xFF000000000000);
     int up = UP, upleft = UPLEFT, upright = UPRIGHT, piece = W_PAWN;
 
-    if (board.player == BLACK) {
+    if (board->player == BLACK) {
         rank3 = UINT64_C(0xFF0000000000);
         rank7 = UINT64_C(0xFF00);
         up = DOWN;
@@ -58,9 +58,9 @@ static void generate_pawn_moves(Board board, Move *moves, int *count) {
         piece = B_PAWN;
     }
 
-    Bitboard pawns = board.pieces[piece] & ~rank7;
-    Bitboard enemies = board.pieces[!board.player];
-    Bitboard empty = ~board.occupancies[2];
+    Bitboard pawns = board->pieces[piece] & ~rank7;
+    Bitboard enemies = board->pieces[!board->player];
+    Bitboard empty = ~board->occupancies[2];
 
     Bitboard single_push = shift_bit(pawns, up) & empty;
     Bitboard double_push = shift_bit(single_push & rank3, up) & empty;
@@ -73,7 +73,7 @@ static void generate_pawn_moves(Board board, Move *moves, int *count) {
         moves[(*count)++] = encode_move(end - up - up, end, 0, 0);
     }
 
-    Bitboard seventh = board.pieces[piece] & rank7;
+    Bitboard seventh = board->pieces[piece] & rank7;
     if (seventh) {
         Bitboard left = shift_bit(seventh, upleft) & enemies;
         Bitboard right = shift_bit(seventh, upright) & enemies;
@@ -101,12 +101,12 @@ static void generate_pawn_moves(Board board, Move *moves, int *count) {
         }
     }
 
-    int ep = board.state[board.ply].enpassant;
+    int ep = board->state[board->ply].enpassant;
     if (ep != NO_SQUARE) {
-        if ((ep & 7) != 7 && board.board[ep - upleft] == piece) {
+        if ((ep & 7) != 7 && board->board[ep - upleft] == piece) {
             moves[(*count)++] = encode_move(ep - upleft, ep, ENPASSANT, 0);
         }
-        if ((ep & 7) != 0 && board.board[ep - upright] == piece) {
+        if ((ep & 7) != 0 && board->board[ep - upright] == piece) {
             moves[(*count)++] = encode_move(ep - upright, ep, ENPASSANT, 0);
         }
     }

@@ -40,39 +40,39 @@ void init_attacks() {
     init_magics(BISHOP);
 }
 
-Bitboard get_attacks(Board board, int square) {
-    switch (get_piece(board.board[square])) {
+Bitboard get_attacks(const Board *board, int square) {
+    switch (get_piece(board->board[square])) {
     case PAWN:
-        return pawn_attacks[board.player][square] &
-               board.occupancies[!board.player];
+        return pawn_attacks[board->player][square] &
+               board->occupancies[!board->player];
     case KNIGHT:
-        return knight_attacks[square] & ~board.occupancies[board.player];
+        return knight_attacks[square] & ~board->occupancies[board->player];
     case BISHOP:
-        return get_bishop_attacks(square, board.occupancies[2]) &
-               ~board.occupancies[board.player];
+        return get_bishop_attacks(square, board->occupancies[2]) &
+               ~board->occupancies[board->player];
     case ROOK:
-        return get_rook_attacks(square, board.occupancies[2]) &
-               ~board.occupancies[board.player];
+        return get_rook_attacks(square, board->occupancies[2]) &
+               ~board->occupancies[board->player];
     case QUEEN:
-        return (get_bishop_attacks(square, board.occupancies[2]) |
-                get_rook_attacks(square, board.occupancies[2])) &
-               ~board.occupancies[board.player];
+        return (get_bishop_attacks(square, board->occupancies[2]) |
+                get_rook_attacks(square, board->occupancies[2])) &
+               ~board->occupancies[board->player];
     case KING:
-        return king_attacks[square] & ~board.occupancies[board.player];
+        return king_attacks[square] & ~board->occupancies[board->player];
     }
 
     return UINT64_C(0);
 }
 
-bool is_attacked(Board board, int square, int player) {
+bool is_attacked(const Board *board, int square, int player) {
     int shift = player == WHITE ? 0 : 8;
-    return (pawn_attacks[!player][square] & board.pieces[PAWN + shift]) ||
-           (knight_attacks[square] & board.pieces[KNIGHT + shift]) ||
-           (king_attacks[square] & board.pieces[KING + shift]) ||
-           (get_rook_attacks(square, board.occupancies[2]) &
-            (board.pieces[ROOK + shift] | board.pieces[QUEEN + shift])) ||
-           (get_bishop_attacks(square, board.occupancies[2]) &
-            (board.pieces[BISHOP + shift] | board.pieces[QUEEN + shift]));
+    return (pawn_attacks[!player][square] & board->pieces[PAWN + shift]) ||
+           (knight_attacks[square] & board->pieces[KNIGHT + shift]) ||
+           (king_attacks[square] & board->pieces[KING + shift]) ||
+           (get_rook_attacks(square, board->occupancies[2]) &
+            (board->pieces[ROOK + shift] | board->pieces[QUEEN + shift])) ||
+           (get_bishop_attacks(square, board->occupancies[2]) &
+            (board->pieces[BISHOP + shift] | board->pieces[QUEEN + shift]));
 }
 
 static Bitboard init_pawn_attacks(int square, int player) {

@@ -3,6 +3,6 @@
 
 #include "constants.h"
 
-int generate_moves(Board board, Move *moves);
+int generate_moves(const Board *board, Move *moves);
 
 #endif

@@ -22,26 +22,26 @@ void start_board(Board *board) {
     load_fen(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
-void print_board(Board board, int score) {
+void print_board(const Board *board, int score) {
     const char pieces[6] = {'P', 'N', 'B', 'R', 'Q', 'K'};
 
     printf("\n");
 
     for (int i = 0; i < 8; i++) {
-        int rank = board.player == WHITE ? 7 - i : i;
+        int rank = board->player == WHITE ? 7 - i : i;
 
         printf("%d  ", rank + 1);
         for (int j = 0; j < 8; j++) {
-            int file = board.player == WHITE ? j : 7 - j;
+            int file = board->player == WHITE ? j : 7 - j;
             int square = rank * 8 + file;
 
-            if (get_bit(board.occupancies[2], square)) {
+            if (get_bit(board->occupancies[2], square)) {
                 for (int piece = PAWN; piece <= KING; piece++) {
-                    if (get_bit(board.pieces[piece], square)) {
+                    if (get_bit(board->pieces[piece], square)) {
                         printf("%c ", pieces[piece]);
                         break;
                     }
-                    if (get_bit(board.pieces[piece + 8], square)) {
+                    if (get_bit(board->pieces[piece + 8], square)) {
                         printf("%c ", tolower(pieces[piece]));
                         break;
                     }
@@ -52,7 +52,7 @@ void print_board(Board board, int score) {
         }
         printf("\n");
     }
-    if (board.player == WHITE) {
+    if (board->player == WHITE) {
         printf("\n   a b c d e f g h\n\n");
     } else {
         printf("\n   h g f e d c b a\n\n");
@@ -68,18 +68,18 @@ void print_board(Board board, int score) {
         }
 
         printf("Player to move: %s\n",
-               board.player == WHITE ? "White" : "Black");
+               board->player == WHITE ? "White" : "Black");
     }
 
     if (DEBUG_VALUE) {
-        State state = board.state[board.ply];
+        State state = board->state[board->ply];
         printf("\nCastling: %c%c%c%c\n", state.castling & CASTLE_WK ? 'K' : '-',
                state.castling & CASTLE_WQ ? 'Q' : '-',
                state.castling & CASTLE_BK ? 'k' : '-',
                state.castling & CASTLE_BQ ? 'q' : '-');
-        printf("Enpassant: %s\n", state.enpassant != NO_SQUARE
-                                      ? get_coordinates(state.enpassant)
-                                      : "none");
+        printf("Enpassant: %s\n\n", state.enpassant != NO_SQUARE
+                                        ? get_coordinates(state.enpassant)
+                                        : "none");
     }
 }
 
