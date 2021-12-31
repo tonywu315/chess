@@ -3,6 +3,7 @@
 
 #include "constants.h"
 
-int eval();
+void init_evaluation();
+int eval(Board *board);
 
 #endif
