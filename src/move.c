@@ -30,9 +30,9 @@ void make_move(Board *board, Move move) {
     state.enpassant = NO_SQUARE;
     state.draw_ply++;
 
-    if (flag == CASTLING_FLAG) {
+    if (flag == CASTLING) {
         move_castle(board, start, end);
-    } else if (flag == ENPASSANT_FLAG) {
+    } else if (flag == ENPASSANT) {
         state.capture = board->board[8 * (start / 8) + (end & 7)];
         move_enpassant(board, start, end);
         state.draw_ply = 0;
@@ -48,7 +48,7 @@ void make_move(Board *board, Move move) {
             /* Double pawn push */
             if ((start ^ end) == 16) {
                 state.enpassant = start + (get_color(piece) == WHITE ? 8 : -8);
-            } else if (flag == PROMOTION_FLAG) {
+            } else if (flag == PROMOTION) {
                 move_promotion(board, end, get_move_promotion(move) + KNIGHT);
             }
 
@@ -68,20 +68,20 @@ void unmake_move(Board *board, Move move) {
 
     board->player = !board->player;
 
-    if (flag == CASTLING_FLAG) {
+    if (flag == CASTLING) {
         unmove_castle(board, start, end);
     } else {
         move_piece(board, end, start);
 
         if (state.capture != NO_PIECE) {
-            if (flag == ENPASSANT_FLAG) {
+            if (flag == ENPASSANT) {
                 place_piece(board, 8 * (start / 8) + (end & 7), state.capture);
             } else {
                 place_piece(board, end, state.capture);
             }
         }
 
-        if (flag == PROMOTION_FLAG) {
+        if (flag == PROMOTION) {
             move_promotion(board, start, PAWN);
         }
     }

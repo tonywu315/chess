@@ -7,9 +7,6 @@ typedef struct magics {
     int shift;
 } Magic;
 
-static const Bitboard MASK_FILE_A = UINT64_C(0xFEFEFEFEFEFEFEFE);
-static const Bitboard MASK_FILE_H = UINT64_C(0x7F7F7F7F7F7F7F7F);
-
 /* Lookup tables and Fancy Magic Bitboards */
 Bitboard pawn_attacks[2][64];
 Bitboard knight_attacks[64];
@@ -43,7 +40,31 @@ void init_attacks() {
     init_magics(BISHOP);
 }
 
-int is_attacked(Board board, int square, int player) {
+Bitboard get_attacks(Board board, int square) {
+    switch (get_piece(board.board[square])) {
+    case PAWN:
+        return pawn_attacks[board.player][square] &
+               board.occupancies[!board.player];
+    case KNIGHT:
+        return knight_attacks[square] & ~board.occupancies[board.player];
+    case BISHOP:
+        return get_bishop_attacks(square, board.occupancies[2]) &
+               ~board.occupancies[board.player];
+    case ROOK:
+        return get_rook_attacks(square, board.occupancies[2]) &
+               ~board.occupancies[board.player];
+    case QUEEN:
+        return (get_bishop_attacks(square, board.occupancies[2]) |
+                get_rook_attacks(square, board.occupancies[2])) &
+               ~board.occupancies[board.player];
+    case KING:
+        return king_attacks[square] & ~board.occupancies[board.player];
+    }
+
+    return UINT64_C(0);
+}
+
+bool is_attacked(Board board, int square, int player) {
     int shift = player == WHITE ? 0 : 8;
     return (pawn_attacks[!player][square] & board.pieces[PAWN + shift]) ||
            (knight_attacks[square] & board.pieces[KNIGHT + shift]) ||
@@ -58,9 +79,9 @@ static Bitboard init_pawn_attacks(int square, int player) {
     Bitboard pawn = create_bit(square);
 
     if (player == WHITE) {
-        return ((pawn << 9) & MASK_FILE_A) | ((pawn << 7) & MASK_FILE_H);
+        return shift_bit(pawn, UPLEFT) | shift_bit(pawn, UPRIGHT);
     } else {
-        return ((pawn >> 7) & MASK_FILE_A) | ((pawn >> 9) & MASK_FILE_H);
+        return shift_bit(pawn, DOWNLEFT) | shift_bit(pawn, DOWNRIGHT);
     }
 }
 
@@ -71,9 +92,9 @@ static Bitboard init_knight_attacks(int square) {
 
     set_bit(&knight, square);
 
-    Bitboard left1 = (knight >> 1) & MASK_FILE_H;
+    Bitboard left1 = shift_bit(knight, LEFT);
     Bitboard left2 = (knight >> 2) & MASK_FILE_HG;
-    Bitboard right1 = (knight << 1) & MASK_FILE_A;
+    Bitboard right1 = shift_bit(knight, RIGHT);
     Bitboard right2 = (knight << 2) & MASK_FILE_AB;
     Bitboard height1 = left1 | right1;
     Bitboard height2 = left2 | right2;
@@ -83,11 +104,10 @@ static Bitboard init_knight_attacks(int square) {
 
 static Bitboard init_king_attacks(int square) {
     Bitboard king = create_bit(square);
-    Bitboard attacks =
-        ((king << 1) & MASK_FILE_A) | ((king >> 1) & MASK_FILE_H);
+    Bitboard attacks = shift_bit(king, LEFT) | shift_bit(king, RIGHT);
 
     king |= attacks;
-    attacks |= (king << 8) | (king >> 8);
+    attacks |= shift_bit(king, UP) | shift_bit(king, DOWN);
 
     return attacks;
 }

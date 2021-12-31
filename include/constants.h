@@ -24,6 +24,10 @@
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
+#define PROMOTION 1
+#define ENPASSANT 2
+#define CASTLING 3
+
 /* Debug macro only appears if DEBUG is passed in */
 /* Compiler optimizes out functions if DEBUG_VALUE is not set */
 #ifdef DEBUG
@@ -49,6 +53,20 @@
             exit(1);                                                           \
         }                                                                      \
     } while (0)
+
+/*
+    Information about a move is encoded in 16 bits
+
+    Bits                   Information
+
+    00 00 000000 111111    start square
+    00 00 111111 000000    end square
+    00 11 000000 000000    promotion piece
+    11 00 000000 000000    special flags
+
+    Special flags: promotion = 1, enpassant = 2, castling = 3
+*/
+typedef uint16_t Move;
 
 typedef uint64_t Bitboard;
 typedef unsigned long long U64;
@@ -166,6 +184,16 @@ enum Result {
     BLACK_WIN,
     DRAW
 };
+// clang-format on
+
+static inline Move encode_move(int start, int end, int flag, int promotion) {
+    return start | (end << 6) | (flag << 12) | ((promotion - KNIGHT) << 14);
+}
+
+static inline int get_move_start(Move move) { return move & 0x3F; }
+static inline int get_move_end(Move move) { return (move >> 6) & 0x3F; }
+static inline int get_move_flag(Move move) { return (move >> 12) & 3; }
+static inline int get_move_promotion(Move move) { return (move >> 14) & 3; }
 
 static inline int get_piece(int piece) { return piece & 7; }
 static inline int get_color(int piece) { return piece >> 3; }
@@ -189,6 +217,20 @@ static inline void clear_bit(Bitboard *bitboard, int square) {
 }
 
 static inline Bitboard create_bit(int square) { return UINT64_C(1) << square; }
+
+static inline Bitboard shift_bit(Bitboard bitboard, int direction) {
+    static const Bitboard MASK_FILE_A = UINT64_C(0xFEFEFEFEFEFEFEFE);
+    static const Bitboard MASK_FILE_H = UINT64_C(0x7F7F7F7F7F7F7F7F);
+    return direction == UP          ? bitboard << 8
+           : direction == DOWN      ? bitboard >> 8
+           : direction == LEFT      ? (bitboard >> 1) & MASK_FILE_H
+           : direction == RIGHT     ? (bitboard << 1) & MASK_FILE_A
+           : direction == UPLEFT    ? (bitboard << 7) & MASK_FILE_H
+           : direction == UPRIGHT   ? (bitboard << 9) & MASK_FILE_A
+           : direction == DOWNLEFT  ? (bitboard >> 9) & MASK_FILE_H
+           : direction == DOWNRIGHT ? (bitboard >> 7) & MASK_FILE_A
+                                    : 0;
+}
 
 static inline int in_bounds(int start, int direction) {
     int end = start + direction;
@@ -220,22 +262,21 @@ static inline int get_sparse_population(Bitboard bitboard) {
     return count;
 }
 
-// int pop_lsb(Bitboard *bitboard) {
-//     int lsb = get_lsb(*bitboard);
-//     *bitboard &= *bitboard - 1;
-//     return lsb;
-// }
+static inline int get_lsb(Bitboard bitboard) {
+    static const int index[64] = {
+        0,  1,  48, 2,  57, 49, 28, 3,  61, 58, 50, 42, 38, 29, 17, 4,
+        62, 55, 59, 36, 53, 51, 43, 22, 45, 39, 33, 30, 24, 18, 12, 5,
+        63, 47, 56, 27, 60, 41, 37, 16, 54, 35, 52, 21, 44, 32, 23, 11,
+        46, 26, 40, 15, 34, 20, 31, 10, 25, 14, 19, 9,  13, 8,  7,  6};
+    static const U64 debruijn64 = UINT64_C(0x03F79D71B4CB0A89);
+    return index[((bitboard & -bitboard) * debruijn64) >> 58];
+}
 
-// int get_lsb(Bitboard bitboard) {
-//     static const int lsb_table[64] = {
-//         63, 30, 3,  32, 59, 14, 11, 33, 60, 24, 50, 9,  55, 19, 21, 34,
-//         61, 29, 2,  53, 51, 23, 41, 18, 56, 28, 1,  43, 46, 27, 0,  35,
-//         62, 31, 58, 4,  5,  49, 54, 6,  15, 52, 12, 40, 7,  42, 45, 16,
-//         25, 57, 48, 13, 10, 39, 8,  44, 20, 47, 38, 22, 17, 37, 36, 26};
-
-//     bitboard ^= bitboard - 1;
-//     return lsb_table[((int)bitboard ^ (bitboard >> 32)) * 0x78291ACF >> 26];
-// }
+static inline int pop_lsb(Bitboard *bitboard) {
+    int lsb = get_lsb(*bitboard);
+    *bitboard &= *bitboard - 1;
+    return lsb;
+}
 
 /* 0x88 Board Representation (16x8 array) */
 

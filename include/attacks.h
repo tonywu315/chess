@@ -4,6 +4,7 @@
 #include "constants.h"
 
 void init_attacks();
-int is_attacked(Board board, int square, int player);
+Bitboard get_attacks(Board board, int square);
+bool is_attacked(Board board, int square, int player);
 
 #endif
