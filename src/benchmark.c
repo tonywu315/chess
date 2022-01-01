@@ -6,17 +6,17 @@
 
 /*
 CURRENT PERFORMANCE FOR DEPTH 6
-perft:          55.419 MNPS
-speedy_perft:   301.349 MNPS
-pseudo_perft:   324.450 MNPS
-loop_speed:     1126.715 MNPS
+perft:           54.196 MNPS
+make_unmake:     110.619 MNPS
+
+Bulk counting:
+speedy_perft:    307.922 MNPS
+pseudo_perft:    322.456 MNPS
 */
 
-static inline void perft(Board *board, int depth, U64 *nodes);
 static inline void speedy_perft(Board *board, int depth, U64 *nodes);
 static inline void pseudo_perft(Board *board, int depth, U64 *nodes);
-static inline U64 loop_speed(int depth, U64 *nodes);
-
+static inline void make_unmake(Board *board, int depth, U64 *nodes);
 
 /* Computes time to complete task */
 void benchmark(Board *board, int depth) {
@@ -33,8 +33,9 @@ void benchmark(Board *board, int depth) {
     printf("Time: %lf seconds, MNPS: %.3f\n", time, nodes / (time * 1000000));
 }
 
+static int a;
 /* Performance test for enumerating all moves to a certain depth */
-static inline void perft(Board *board, int depth, U64 *nodes) {
+void perft(Board *board, int depth, U64 *nodes) {
     Move moves[MAX_MOVES];
 
     if (depth == 0) {
@@ -44,11 +45,7 @@ static inline void perft(Board *board, int depth, U64 *nodes) {
 
         for (int i = 0; i < count; i++) {
             make_move(board, moves[i]);
-            if (!is_attacked(
-                    board,
-                    get_lsb(board->pieces[board->player == WHITE ? B_KING
-                                                                 : W_KING]),
-                    board->player)) {
+            if (!in_check(board, !board->player)) {
                 perft(board, depth - 1, nodes);
             }
             unmake_move(board, moves[i]);
@@ -66,11 +63,7 @@ static inline void speedy_perft(Board *board, int depth, U64 *nodes) {
     } else {
         for (int i = 0; i < count; i++) {
             make_move(board, moves[i]);
-            if (!is_attacked(
-                    board,
-                    get_lsb(board->pieces[board->player == WHITE ? B_KING
-                                                                 : W_KING]),
-                    board->player)) {
+            if (!in_check(board, !board->player)) {
                 speedy_perft(board, depth - 1, nodes);
             }
             unmake_move(board, moves[i]);
@@ -94,12 +87,13 @@ static inline void pseudo_perft(Board *board, int depth, U64 *nodes) {
     }
 }
 
-/* Tests speed to loop through depth * 1 billion times */
-static inline U64 loop_speed(int depth, U64 *nodes) {
-    U64 billion = 1000000000;
-    for (U64 i = 0; i < depth * billion; i++) {
+/* Tests speed to make and unmake depth * 100 million times */
+static inline void make_unmake(Board *board, int depth, U64 *nodes) {
+    U64 hundred_million = 100000000;
+    Move move = encode_move(E2, E4, 0, 0);
+    for (U64 i = 0; i < depth * hundred_million; i++) {
+        make_move(board, move);
         *nodes += 1;
+        unmake_move(board, move);
     }
-
-    return depth * billion;
 }

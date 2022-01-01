@@ -195,11 +195,14 @@ static inline Bitboard shift_bit(Bitboard bitboard, int direction) {
                                     : 0;
 }
 
-static inline int in_bounds(int start, int direction) {
+static inline bool in_bounds(int start, int direction) {
     int end = start + direction;
     int distance = abs((start / 8 - end / 8) - (start % 8 - end % 8));
     return end >= A1 && end <= H8 && distance <= 2;
 }
+
+static inline bool valid_row(int row) { return row >= 0 && row <= 7; }
+static inline int make_square(int file, int rank) { return file + (rank << 3); }
 
 /* Hamming Weight Algorithm, 12 Arithmetic Operations */
 static inline int get_population(Bitboard bitboard) {

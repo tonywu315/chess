@@ -1,8 +1,8 @@
 #include "search.h"
+#include "attacks.h"
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
-#include "attacks.h"
 
 /* Alpha beta pruning */
 int search(Board *board, int alpha, int beta, int ply, int depth,
@@ -10,9 +10,7 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
     Move moves[MAX_MOVES];
     Line line;
 
-    bool check = is_attacked(
-        board, get_lsb(board->pieces[make_piece(KING, board->player)]),
-        !board->player);
+    bool check = in_check(board, board->player);
 
     /* Check extension */
     if (check) {
@@ -32,9 +30,7 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
         make_move(board, moves[i]);
 
         /* Removes illegal moves */
-        if (is_attacked(
-                board, get_lsb(board->pieces[make_piece(KING, !board->player)]),
-                board->player)) {
+        if (in_check(board, !board->player)) {
             unmake_move(board, moves[i]);
             continue;
         }

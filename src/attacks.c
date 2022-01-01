@@ -8,13 +8,13 @@ typedef struct magics {
 } Magic;
 
 /* Lookup tables and Fancy Magic Bitboards */
-Bitboard pawn_attacks[2][64];
-Bitboard knight_attacks[64];
-Bitboard king_attacks[64];
-Magic rook_magics[64];
-Magic bishop_magics[64];
-Bitboard rook_attacks[102400];
-Bitboard bishop_attacks[5248];
+static Bitboard pawn_attacks[2][64];
+static Bitboard knight_attacks[64];
+static Bitboard king_attacks[64];
+static Magic rook_magics[64];
+static Magic bishop_magics[64];
+static Bitboard rook_attacks[102400];
+static Bitboard bishop_attacks[5248];
 
 static Bitboard init_pawn_attacks(int square, int player);
 static Bitboard init_knight_attacks(int square);
@@ -40,8 +40,8 @@ void init_attacks() {
     init_magics(BISHOP);
 }
 
-Bitboard get_attacks(const Board *board, int square) {
-    switch (get_piece(board->board[square])) {
+Bitboard get_attacks(const Board *board, int square, int piece) {
+    switch (get_piece(piece)) {
     case PAWN:
         return pawn_attacks[board->player][square] &
                board->occupancies[!board->player];
@@ -73,6 +73,11 @@ bool is_attacked(const Board *board, int square, int player) {
             (board->pieces[ROOK + shift] | board->pieces[QUEEN + shift])) ||
            (get_bishop_attacks(square, board->occupancies[2]) &
             (board->pieces[BISHOP + shift] | board->pieces[QUEEN + shift]));
+}
+
+bool in_check(const Board *board, int player) {
+    int king = get_lsb(board->pieces[make_piece(KING, player)]);
+    return is_attacked(board, king, !player);
 }
 
 static Bitboard init_pawn_attacks(int square, int player) {

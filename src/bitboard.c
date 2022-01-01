@@ -33,7 +33,7 @@ void print_board(const Board *board, int score) {
         printf("%d  ", rank + 1);
         for (int j = 0; j < 8; j++) {
             int file = board->player == WHITE ? j : 7 - j;
-            int square = rank * 8 + file;
+            int square = make_square(file, rank);
 
             if (get_bit(board->occupancies[2], square)) {
                 for (int piece = PAWN; piece <= KING; piece++) {
@@ -88,7 +88,8 @@ void print_bitboard(Bitboard bitboard) {
     for (int rank = 7; rank >= 0; rank--) {
         printf("%d ", rank + 1);
         for (int file = 0; file < 8; file++) {
-            printf(" %c", get_bit(bitboard, rank * 8 + file) ? '1' : '.');
+            printf(" %c",
+                   get_bit(bitboard, make_square(file, rank)) ? '1' : '.');
         }
 
         printf("\n");
@@ -150,7 +151,7 @@ void load_fen(Board *board, const char *fen) {
         index += 2;
     } else {
         board->state[0].enpassant =
-            fen[index] - 'a' + 8 * (fen[index + 1] - '1');
+            make_square(fen[index] - 'a', (fen[index + 1] - '1'));
         index += 3;
     }
 

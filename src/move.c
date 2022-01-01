@@ -1,5 +1,6 @@
 #include "move.h"
 #include "move_generation.h"
+#include "search.h"
 
 static const int castling_mask[64] = {
     13, 15, 15, 15, 12, 15, 15, 14, 15, 15, 15, 15, 15, 15, 15, 15,
@@ -87,6 +88,39 @@ void unmake_move(Board *board, Move move) {
     }
 
     board->ply--;
+}
+
+int move_legal(Board *board, Move move) {
+    Move moves[MAX_MOVES];
+    int count = generate_legal_moves(board, moves);
+
+    /* Iterates through all legal moves and checks if the move is in there */
+    for (int i = 0; i < count; i++) {
+        if ((moves[i] & UINT16_C(0x3FFF)) == (move & UINT16_C(0x3FFF))) {
+            make_move(board, moves[i]);
+            return SUCCESS;
+        }
+    }
+
+    return FAILURE;
+}
+
+int move_computer(Board *board, int depth) {
+    Line mainline;
+    int score = search(board, -INT_MAX, INT_MAX, 0, depth, &mainline);
+
+    /* Checks if engine is going to be checkmated */
+    if (score == -INT_MAX) {
+        Move moves[MAX_MOVES];
+        generate_legal_moves(board, moves);
+        make_move(board, moves[0]);
+
+        debug_printf("%s\n", "Computer is getting checkmated");
+    } else {
+        make_move(board, mainline.moves[0]);
+    }
+
+    return score;
 }
 
 static inline void move_piece(Board *board, int start, int end) {
