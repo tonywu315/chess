@@ -1,7 +1,7 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include "constants.h"
+#include "types.h"
 
 void make_move(Board *board, Move move);
 void unmake_move(Board *board, Move move);

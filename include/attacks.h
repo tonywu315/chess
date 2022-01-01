@@ -1,7 +1,7 @@
 #ifndef ATTACKS_H
 #define ATTACKS_H
 
-#include "constants.h"
+#include "types.h"
 
 void init_attacks();
 Bitboard get_attacks(const Board *board, int square, int piece);
