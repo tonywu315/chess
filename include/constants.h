@@ -87,34 +87,10 @@ typedef struct board {
     int ply;
 } Board;
 
-// typedef struct oldboard {
-//     int colors[ARRAY_SIZE];
-//     int pieces[ARRAY_SIZE];
-//     int player;    /* Player to move */
-//     int castle;    /* 0-15 number that represents castling availability */
-//     int enpassant; /* En passant square */
-//     int ply;       /* Keeps track for 50 move rule */
-//     int king[2];   /* Location of kings */
-// } OldBoard;
-
-// extern OldBoard oldboard;
-// typedef struct move {
-//     int start;
-//     int end;
-//     int captured;
-//     int flag;
-//     int castle;
-//     int enpassant;
-//     int ply;
-// } OldMove;
-
-// extern OldMove game_moves[MAX_MOVES]; /* May need to reallocate rarely */
-// extern int game_position;
-
-// typedef struct line {
-//     int length;
-//     OldMove moves[MAX_PLY];
-// } Line;
+typedef struct line {
+    int length;
+    Move moves[MAX_PLY];
+} Line;
 
 // clang-format off
 enum Square {
@@ -162,22 +138,6 @@ enum Direction {
     DOWNLEFT = -9
 };
 
-// enum Flag {
-//     NORMAL = 0,
-//     CAPTURE = 3,
-//     DOUBLE = 5,
-//     ENPASSANT = 6,
-//     NULLMOVE = 7,
-//     CASTLE_WK = 1,
-//     CASTLE_WQ = 2,
-//     CASTLE_BK = 4,
-//     CASTLE_BQ = 8,
-//     PROMOTION_N = 9,
-//     PROMOTION_B = 10,
-//     PROMOTION_R = 11,
-//     PROMOTION_Q = 12
-// };
-
 enum Result {
     NONE,
     WHITE_WIN,
@@ -197,6 +157,9 @@ static inline int get_move_promotion(Move move) { return (move >> 14) & 3; }
 
 static inline int get_piece(int piece) { return piece & 7; }
 static inline int get_color(int piece) { return piece >> 3; }
+static inline int make_piece(int piece, int color) {
+    return piece | (color << 3);
+}
 
 /* Bitboard Functions */
 
@@ -277,26 +240,5 @@ static inline int pop_lsb(Bitboard *bitboard) {
     *bitboard &= *bitboard - 1;
     return lsb;
 }
-
-/* 0x88 Board Representation (16x8 array) */
-
-// /* Returns file and rank of square (number from 0 to 7) */
-// static inline int get_file(int square) { return square & 7; }
-// static inline int get_rank(int square) { return square >> 4; }
-
-// /* Returns square given file and rank */
-// static inline int get_square(int file, int rank) { return file + rank * 16; }
-
-// /* Returns true if square is outside the board */
-// static inline bool invalid_square(int square) { return square & 0x88; }
-
-// /* Returns true if file or rank is valid */
-// static inline bool valid_row(int row) { return row <= 7; }
-
-// /* Checks if a certain player has a certain piece at square */
-// static inline bool exists(int square, int player, int piece) {
-//     return oldboard.pieces[square] == piece &&
-//            oldboard.colors[square] == player;
-// }
 
 #endif

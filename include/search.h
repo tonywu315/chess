@@ -3,6 +3,7 @@
 
 #include "constants.h"
 
-int alpha_beta(int alpha, int beta, int ply, int depth, Line *mainline);
+int search(Board *board, int alpha, int beta, int ply, int depth,
+           Line *mainline);
 
 #endif
