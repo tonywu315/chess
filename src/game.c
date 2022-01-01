@@ -1,65 +1,69 @@
+#include "attacks.h"
 #include "bitboard.h"
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
-#include "attacks.h"
+#include "search.h"
+
+static Move game_moves[MAX_MOVES];
+static int game_ply;
 
 static void start_game(Board *board, bool mode, int player, int depth);
-static int get_move(const Board *board, Move *move);
+static int get_move(Board *board, Move *move, bool mode);
+static int move_legal(Board *board, Move move);
 static int game_status(Board *board);
 
-/* Start single player game */
+// Start singleplayer game
 void start_singleplayer(Board *board, int player_color, int depth) {
     start_game(board, true, player_color, depth);
 }
 
-/* Start multi player game */
-void start_multiplayer(Board *board) {
-    start_game(board, false, 0, 0);
-}
+// Start multiplayer game
+void start_multiplayer(Board *board) { start_game(board, false, 0, 0); }
 
-/* Start chess game */
+// Start chess game
 static void start_game(Board *board, bool mode, int player, int depth) {
-    int status = 0, score = eval(board);
-    bool flag = true;
+    Move move;
+    Line line;
+    int score = eval(board);
 
     printf("\n=== Chess Program ===\n");
 
-    /* Computer moves first if player is black */
+    // Computer moves first if player is black
     if (mode && player == BLACK) {
-        score = -move_computer(board, depth);
-        if ((status = game_status(board))) {
-            flag = false;
-        }
+        score = search(board, -INT_MAX, INT_MAX, 0, depth, &line);
+        make_move(board, line.moves[0]);
+        game_moves[game_ply++] = line.moves[0];
     }
 
-    while (flag) {
-        /* Print board */
+    // Loop until game ends
+    int status = game_status(board);
+    while (status == NONE) {
+        // Print board
         print_board(board, score);
 
-        /* Get move until it is legal */
-        Move move;
-        while (get_move(board, &move) || move_legal(board, move)) {
+        // Input move until it is legal and then make the move
+        while (get_move(board, &move, mode) || move_legal(board, move)) {
         }
+        game_moves[game_ply++] = move;
 
-        /* Stop game if it is over */
+        // Stop game once it ends
         if ((status = game_status(board))) {
-            score = INT_MAX;
             board->player = !board->player;
             break;
         }
         score = eval(board);
 
-        /* Play computer move if in single player mode */
+        // Computer moves if it is singleplayer
         if (mode) {
-            score = -move_computer(board, depth);
-            if ((status = game_status(board))) {
-                score = INT_MAX;
-                break;
-            }
+            score = search(board, -INT_MAX, INT_MAX, 0, depth, &line);
+            make_move(board, line.moves[0]);
+            game_moves[game_ply++] = line.moves[0];
+            status = game_status(board);
         }
     }
 
+    // Print the board at the end of the game
     print_board(board, score);
     if (status == WHITE_WIN) {
         printf("\nCheckmate! White wins\n");
@@ -70,8 +74,8 @@ static void start_game(Board *board, bool mode, int player, int depth) {
     }
 }
 
-/* Parses player move and returns move */
-static int get_move(const Board *board, Move *move) {
+// Parse player move and returns move
+static int get_move(Board *board, Move *move, bool mode) {
     char input[5] = {0};
     int start_file, start_rank, end_file, end_rank, promotion = NO_PIECE_TYPE;
 
@@ -80,12 +84,13 @@ static int get_move(const Board *board, Move *move) {
         return FAILURE;
     }
 
-    /* Returns integer equivalent of chars */
+    // Get files and ranks in integer representation
     start_file = tolower(input[0]) - 'a';
     start_rank = input[1] - '1';
     end_file = tolower(input[2]) - 'a';
     end_rank = input[3] - '1';
 
+    // Get promotion piece
     switch (tolower(input[4])) {
     case 'n':
         promotion = 0;
@@ -101,23 +106,23 @@ static int get_move(const Board *board, Move *move) {
         break;
     }
 
-    /* Option to undo moves */
-    // if (!strcmp(input, "undo")) {
-    //     /* If single player, undo 2 moves. Otherwise, undo 1 move */
-    //     if (mode) {
-    //         if (game_position >= 2) {
-    //             unmove_piece();
-    //             unmove_piece();
-    //         }
-    //     } else if (game_position >= 1) {
-    //         unmove_piece();
-    //     }
+    // Option to undo moves
+    if (!strcmp(input, "undo")) {
+        // If single player, undo 2 moves. Otherwise, undo 1 move
+        if (mode) {
+            if (game_ply >= 2) {
+                unmake_move(board, game_moves[--game_ply]);
+                unmake_move(board, game_moves[--game_ply]);
+            }
+        } else if (game_ply >= 1) {
+            unmake_move(board, game_moves[--game_ply]);
+        }
 
-    //     old_print_board(eval());
-    //     return FAILURE;
-    // }
+        print_board(board, eval(board));
+        return FAILURE;
+    }
 
-    /* Kingside castling */
+    // Kingside castling
     if (!strcmp(input, "O-O") || !strcmp(input, "0-0")) {
         if (board->player == WHITE) {
             *move = UINT16_C(0xF1C4);
@@ -128,7 +133,7 @@ static int get_move(const Board *board, Move *move) {
         return SUCCESS;
     }
 
-    /* Queenside castling */
+    // Queenside castling
     if (!strcmp(input, "O-O-O") || !strcmp(input, "0-0-0")) {
         if (board->player == WHITE) {
             *move = UINT16_C(0xF004);
@@ -139,13 +144,13 @@ static int get_move(const Board *board, Move *move) {
         return SUCCESS;
     }
 
-    /* Create normal move */
+    // Create normal move
     if (valid_row(start_file) && valid_row(start_rank) && valid_row(end_file) &&
         valid_row(end_rank)) {
         int start = make_square(start_file, start_rank);
         int end = make_square(end_file, end_rank);
 
-        /* Promotion */
+        // Promotion
         if (get_piece(board->board[start]) == PAWN &&
             start_rank == (board->player == WHITE ? 6 : 1)) {
             if (promotion == NO_PIECE_TYPE) {
@@ -162,7 +167,23 @@ static int get_move(const Board *board, Move *move) {
     return FAILURE;
 }
 
-/* Returns status of game (white win, black win, draw, or nothing) */
+// Make move if it is legal
+static int move_legal(Board *board, Move move) {
+    Move moves[MAX_MOVES];
+    int count = generate_legal_moves(board, moves);
+
+    // Iterate through all legal moves and check if the move is in there */
+    for (int i = 0; i < count; i++) {
+        if ((moves[i] & UINT16_C(0x3FFF)) == (move & UINT16_C(0x3FFF))) {
+            make_move(board, moves[i]);
+            return SUCCESS;
+        }
+    }
+
+    return FAILURE;
+}
+
+// Returns status of game (white win, black win, draw, or nothing)
 static int game_status(Board *board) {
     Move moves[MAX_MOVES];
 
