@@ -6,7 +6,7 @@
 
 /*
 CURRENT PERFORMANCE FOR DEPTH 6
-perft:           54.196 MNPS
+perft:           55.802 MNPS
 make_unmake:     110.619 MNPS
 
 Bulk counting:
