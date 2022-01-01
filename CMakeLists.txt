@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 3.21)
 project(chess)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+set(CMAKE_C_FLAGS "-O3")
 
 # C files
 set(SOURCES
+    src/attacks.c
     src/benchmark.c
-    src/board.c
+    src/bitboard.c
     src/evaluation.c
     src/game.c
     src/move_generation.c
@@ -18,14 +20,11 @@ set(SOURCES
 add_executable(chess.out ${SOURCES} src/main.c)
 target_include_directories(chess.out PRIVATE include)
 
-# Build tests in debug mode
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # Chess library file for tests
-    add_library(chesslib ${SOURCES})
-    target_include_directories(chesslib PRIVATE include)
+# Chess library file for tests
+add_library(chesslib ${SOURCES})
+target_include_directories(chesslib PRIVATE include)
 
-    # Tests
-    include(CTest)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+# Tests
+include(CTest)
+enable_testing()
+add_subdirectory(tests)

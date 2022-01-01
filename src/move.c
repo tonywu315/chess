@@ -2,179 +2,102 @@
 #include "move_generation.h"
 #include "search.h"
 
-static inline void update_piece(U8 start, U8 end);
+static const int castling_mask[64] = {
+    13, 15, 15, 15, 12, 15, 15, 14, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15, 7,  15, 15, 15, 3,  15, 15, 11,
+};
 
-/* Changes board based on move (does not check for legality) */
-void move_piece(const Move *move) {
-    /* Checks that move is valid is debug flag is set */
-    debug_assert(move->start != move->end);
-    debug_assert(board.colors[move->start] == board.player);
-    debug_assert(board.colors[move->end] != board.player);
-    debug_assert(board.pieces[move->start] != EMPTY_PIECE);
-    debug_assert(!invalid_square(move->start));
-    debug_assert(!invalid_square(move->end));
+static inline void move_piece(Board *board, int start, int end);
+static inline void move_capture(Board *board, int start, int end);
+static inline void move_castle(Board *board, int start, int end);
+static inline void move_enpassant(Board *board, int start, int end);
+static inline void move_promotion(Board *board, int square, int piece);
+static inline void unmove_castle(Board *board, int start, int end);
+static inline void place_piece(Board *board, int square, int piece);
 
-    /* Resets ply if pawn move or capture for 50 move rule. Enpassant and
-    promotion captures do not have capture flag, but are covered by pawn move */
-    board.ply++;
-    if (board.pieces[move->start] == PAWN || move->flag == CAPTURE) {
-        board.ply = 0;
+void make_move(Board *board, Move move) {
+    State state = board->state[board->ply];
+
+    int start = get_move_start(move);
+    int end = get_move_end(move);
+    int flag = get_move_flag(move);
+    int piece = board->board[start];
+    int capture = board->board[end];
+
+    state.capture = capture;
+    state.castling &= castling_mask[start] & castling_mask[end];
+    state.enpassant = NO_SQUARE;
+    state.draw_ply++;
+
+    if (flag == CASTLING) {
+        move_castle(board, start, end);
+    } else if (flag == ENPASSANT) {
+        state.capture = board->board[8 * (start / 8) + (end & 7)];
+        move_enpassant(board, start, end);
+        state.draw_ply = 0;
+    } else {
+        if (capture == NO_PIECE) {
+            move_piece(board, start, end);
+        } else {
+            move_capture(board, start, end);
+            state.draw_ply = 0;
+        }
+
+        if (get_piece(piece) == PAWN) {
+            /* Double pawn push */
+            if ((start ^ end) == 16) {
+                state.enpassant = start + (get_color(piece) == WHITE ? 8 : -8);
+            } else if (flag == PROMOTION) {
+                move_promotion(board, end, get_move_promotion(move) + KNIGHT);
+            }
+
+            state.draw_ply = 0;
+        }
     }
 
-    /* Updates king position */
-    if (board.pieces[move->start] == KING) {
-        board.king[board.player - 1] = move->end;
-    }
-
-    /* Updates board */
-    update_piece(move->start, move->end);
-
-    /* Moving king or rook removes castle option for that side */
-    switch (move->start) {
-    case E1:
-        board.castle &= 15 - CASTLE_WK - CASTLE_WQ;
-        break;
-    case E8:
-        board.castle &= 15 - CASTLE_BK - CASTLE_BQ;
-        break;
-    case H1:
-        board.castle &= 15 - CASTLE_WK;
-        break;
-    case A1:
-        board.castle &= 15 - CASTLE_WQ;
-        break;
-    case H8:
-        board.castle &= 15 - CASTLE_BK;
-        break;
-    case A8:
-        board.castle &= 15 - CASTLE_BQ;
-        break;
-    }
-
-    /* Additional moves based on flag */
-    switch (move->flag) {
-    case DOUBLE:
-        board.enpassant = (move->start + move->end) / 2;
-        break;
-    case ENPASSANT:; /* Semicolon is necessary to compile */
-        U8 square = 16 * get_rank(move->start) + get_file(move->end);
-        board.colors[square] = EMPTY_COLOR;
-        board.pieces[square] = EMPTY_PIECE;
-        break;
-    case CASTLE_WK:
-        update_piece(H1, F1);
-        board.castle &= 15 - CASTLE_WK - CASTLE_WQ;
-        break;
-    case CASTLE_WQ:
-        update_piece(A1, D1);
-        board.castle &= 15 - CASTLE_WK - CASTLE_WQ;
-        break;
-    case CASTLE_BK:
-        update_piece(H8, F8);
-        board.castle &= 15 - CASTLE_BK - CASTLE_BQ;
-        break;
-    case CASTLE_BQ:
-        update_piece(A8, D8);
-        board.castle &= 15 - CASTLE_BK - CASTLE_BQ;
-        break;
-    case PROMOTION_N:
-        board.pieces[move->end] = KNIGHT;
-        break;
-    case PROMOTION_B:
-        board.pieces[move->end] = BISHOP;
-        break;
-    case PROMOTION_R:
-        board.pieces[move->end] = ROOK;
-        break;
-    case PROMOTION_Q:
-        board.pieces[move->end] = QUEEN;
-        break;
-    }
-
-    /* Removes enpassant flag after 1 move */
-    if (move->flag != DOUBLE) {
-        board.enpassant = -1;
-    }
-
-    /* Switches players, increments search, and adds to moves */
-    board.player = 3 - board.player;
-    game_moves[game_position++] = *move;
+    board->state[++board->ply] = state;
+    board->player = !board->player;
 }
 
-/* Reverses move_piece function */
-void unmove_piece() {
-    Move *move = &game_moves[--game_position];
+void unmake_move(Board *board, Move move) {
+    State state = board->state[board->ply];
+    int start = get_move_start(move);
+    int end = get_move_end(move);
+    int flag = get_move_flag(move);
 
-    /* Resets castle, enpassant, and ply */
-    board.castle = move->castle;
-    board.enpassant = move->enpassant;
-    board.ply = move->ply;
+    board->player = !board->player;
 
-    /* Resets king position */
-    if (board.pieces[move->end] == KING) {
-        board.king[2 - board.player] = move->start;
+    if (flag == CASTLING) {
+        unmove_castle(board, start, end);
+    } else {
+        move_piece(board, end, start);
+
+        if (state.capture != NO_PIECE) {
+            if (flag == ENPASSANT) {
+                place_piece(board, 8 * (start / 8) + (end & 7), state.capture);
+            } else {
+                place_piece(board, end, state.capture);
+            }
+        }
+
+        if (flag == PROMOTION) {
+            move_promotion(board, start, PAWN);
+        }
     }
 
-    /* Undoes move and replaces any captured piece */
-    update_piece(move->end, move->start);
-    if (move->captured) {
-        board.colors[move->end] = board.player;
-        board.pieces[move->end] = move->captured;
-    }
-
-    /* Additional moves based on flag */
-    switch (move->flag) {
-    case ENPASSANT:; /* Semicolon is necessary to compile */
-        int square = 16 * get_rank(move->start) + get_file(move->end);
-        board.colors[square] = board.player;
-        board.pieces[square] = PAWN;
-        break;
-    case CASTLE_WK:
-        update_piece(F1, H1);
-        break;
-    case CASTLE_WQ:
-        update_piece(D1, A1);
-        break;
-    case CASTLE_BK:
-        update_piece(F8, H8);
-        break;
-    case CASTLE_BQ:
-        update_piece(D8, A8);
-        break;
-    case PROMOTION_N:
-    case PROMOTION_B:
-    case PROMOTION_R:
-    case PROMOTION_Q:
-        board.pieces[move->start] = PAWN;
-        break;
-    }
-
-    /* Switches players and decrements search */
-    board.player = 3 - board.player;
+    board->ply--;
 }
 
-/* Moves piece from start to end if it is legal */
-int move_legal(const Move *move) {
-    /* Start and end must be in the board and be different colors */
-    /* Starting square must be the player to move's piece */
-    if (invalid_square(move->start) || invalid_square(move->end) ||
-        board.colors[move->start] != board.player ||
-        board.colors[move->end] == board.player) {
-        return FAILURE;
-    }
-
-    /* Generate legal moves */
+int move_legal(Board *board, Move move) {
     Move moves[MAX_MOVES];
-    int count = generate_legal_moves(moves);
-
-    /* NOTE: Could change moves from array to hashset later, but this code only
-    runs once per turn, so performance is not critical */
+    int count = generate_legal_moves(board, moves);
 
     /* Iterates through all legal moves and checks if the move is in there */
     for (int i = 0; i < count; i++) {
-        if (moves[i].start == move->start && moves[i].end == move->end &&
-            (move->flag < PROMOTION_N || moves[i].flag == move->flag)) {
-            move_piece(&moves[i]);
+        if ((moves[i] & UINT16_C(0x3FFF)) == (move & UINT16_C(0x3FFF))) {
+            make_move(board, moves[i]);
             return SUCCESS;
         }
     }
@@ -182,30 +105,128 @@ int move_legal(const Move *move) {
     return FAILURE;
 }
 
-/* Moves piece for computer and returns score */
-int move_computer(int depth) {
+int move_computer(Board *board, int depth) {
     Line mainline;
-    int score = alpha_beta(-INT_MAX, INT_MAX, 0, depth, &mainline);
+    int score = search(board, -INT_MAX, INT_MAX, 0, depth, &mainline);
 
     /* Checks if engine is going to be checkmated */
     if (score == -INT_MAX) {
-        /* TODO: delay checkmate as long as possible */
         Move moves[MAX_MOVES];
-        generate_legal_moves(moves);
-        move_piece(&moves[0]);
+        generate_legal_moves(board, moves);
+        make_move(board, moves[0]);
 
-        debug_print("%s\n", "Computer is getting checkmated");
+        debug_printf("%s\n", "Computer is getting checkmated");
     } else {
-        move_piece(&mainline.moves[0]);
+        make_move(board, mainline.moves[0]);
     }
 
     return score;
 }
 
-/* Moves piece from start to end and deletes start piece */
-static inline void update_piece(U8 start, U8 end) {
-    board.colors[end] = board.colors[start];
-    board.pieces[end] = board.pieces[start];
-    board.colors[start] = EMPTY_COLOR;
-    board.pieces[start] = EMPTY_PIECE;
+static inline void move_piece(Board *board, int start, int end) {
+    int piece = board->board[start];
+    Bitboard pieces = create_bit(start) | create_bit(end);
+
+    board->pieces[piece] ^= pieces;
+    board->occupancies[get_color(piece)] ^= pieces;
+    board->occupancies[2] ^= pieces;
+
+    board->board[start] = NO_PIECE;
+    board->board[end] = piece;
+}
+
+static inline void move_capture(Board *board, int start, int end) {
+    int piece = board->board[start];
+    int capture = board->board[end];
+    Bitboard start_bitboard = create_bit(start), end_bitboard = create_bit(end);
+
+    board->pieces[piece] ^= start_bitboard | end_bitboard;
+    board->occupancies[get_color(piece)] ^= start_bitboard | end_bitboard;
+    board->pieces[capture] ^= end_bitboard;
+    board->occupancies[get_color(capture)] ^= end_bitboard;
+    board->occupancies[2] ^= start_bitboard;
+
+    board->board[start] = NO_PIECE;
+    board->board[end] = piece;
+}
+
+static inline void move_castle(Board *board, int start, int end) {
+    int side = start < end;
+    int king_square = start + (side ? 2 : -2);
+    int rook_square = start + (side ? 1 : -1);
+    int king = board->board[start];
+    int rook = king - 2;
+    Bitboard kings = create_bit(start) | create_bit(king_square);
+    Bitboard rooks = create_bit(end) | create_bit(rook_square);
+
+    board->pieces[king] ^= kings;
+    board->pieces[rook] ^= rooks;
+    board->occupancies[get_color(king)] ^= kings | rooks;
+    board->occupancies[2] ^= kings | rooks;
+
+    board->board[start] = NO_PIECE;
+    board->board[end] = NO_PIECE;
+    board->board[king_square] = king;
+    board->board[rook_square] = rook;
+}
+
+static inline void move_enpassant(Board *board, int start, int end) {
+    int pawn = board->board[start];
+    int enemy = 8 * (start / 8) + (end & 7);
+    Bitboard pawns = create_bit(start) | create_bit(end);
+    Bitboard enemies = create_bit(enemy);
+
+    board->pieces[pawn] ^= pawns;
+    board->pieces[board->board[enemy]] ^= enemies;
+    board->occupancies[get_color(pawn)] ^= pawns;
+    board->occupancies[!get_color(pawn)] ^= enemies;
+    board->occupancies[2] ^= pawns | enemies;
+
+    board->board[start] = NO_PIECE;
+    board->board[end] = pawn;
+    board->board[enemy] = NO_PIECE;
+}
+
+static inline void move_promotion(Board *board, int square, int piece) {
+    int pawn = board->board[square];
+    Bitboard bitboard = create_bit(square);
+
+    if (get_color(pawn) == BLACK) {
+        piece += 8;
+    }
+
+    board->pieces[pawn] ^= bitboard;
+    board->pieces[piece] ^= bitboard;
+
+    board->board[square] = piece;
+}
+
+static inline void unmove_castle(Board *board, int start, int end) {
+    int side = start < end;
+    int king_square = start + (side ? 2 : -2);
+    int rook_square = start + (side ? 1 : -1);
+    int king = board->board[king_square];
+    int rook = king - 2;
+    Bitboard kings = create_bit(start) | create_bit(king_square);
+    Bitboard rooks = create_bit(end) | create_bit(rook_square);
+
+    board->pieces[king] ^= kings;
+    board->pieces[rook] ^= rooks;
+    board->occupancies[get_color(king)] ^= kings | rooks;
+    board->occupancies[2] ^= kings | rooks;
+
+    board->board[start] = king;
+    board->board[end] = rook;
+    board->board[king_square] = NO_PIECE;
+    board->board[rook_square] = NO_PIECE;
+}
+
+static inline void place_piece(Board *board, int square, int piece) {
+    Bitboard bitboard = create_bit(square);
+
+    board->pieces[piece] ^= bitboard;
+    board->occupancies[get_color(piece)] ^= bitboard;
+    board->occupancies[2] ^= bitboard;
+
+    board->board[square] = piece;
 }

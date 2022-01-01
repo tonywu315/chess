@@ -3,7 +3,7 @@
 
 #include "constants.h"
 
-void perft(int depth, U64 *nodes);
-void benchmark(int depth);
+void benchmark(Board *board, int depth);
+void perft(Board *board, int depth, U64 *nodes);
 
 #endif

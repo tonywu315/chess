@@ -3,7 +3,7 @@
 
 #include "constants.h"
 
-void start_singleplayer(int player, int depth);
-void start_multiplayer();
+void start_singleplayer(Board *board, int player, int depth);
+void start_multiplayer(Board *board);
 
 #endif

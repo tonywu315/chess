@@ -1,15 +1,19 @@
-#include "board.h"
+#include "attacks.h"
+#include "bitboard.h"
+#include "evaluation.h"
 #include "game.h"
+
 #include "benchmark.h"
 
-Board board;
-Move game_moves[MAX_GAME_LENTH];
-int game_position;
-
 /* Start game */
-int main() {
-    start_board();
-    start_singleplayer(WHITE, 6);
+int main(void) {
+    Board board;
+
+    start_board(&board);
+    init_evaluation();
+    init_attacks();
+
+    start_singleplayer(&board, WHITE, 6);
 
     return SUCCESS;
 }
