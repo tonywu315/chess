@@ -1,13 +1,13 @@
 #include "move_generation.h"
 #include "attacks.h"
 #include "bitboard.h"
-
 #include "move.h"
 
 static void generate_pawn_moves(const Board *board, Move *moves, int *count);
 static void generate_piece_moves(const Board *board, Move *moves, int *count,
                                  int piece);
 
+// Print move with start square, end square, and special flags
 void print_move(Move move) {
     static const char *promotion[4] = {"knight", "bishop", "rook", "queen"};
     printf("%s%s", get_coordinates(get_move_start(move)),
@@ -28,41 +28,11 @@ void print_move(Move move) {
     }
 }
 
-// bool is_legal(Board *board, Move move) {
-//     int start = get_move_start(move), end = get_move_end(move);
-//     int flag = get_move_flag(move);
-
-//     if (flag == CASTLING) {
-//         int direction = start < end ? 1 : -1;
-//         for (int square = start; square != end; square += direction) {
-//             if (is_attacked(board, square, !board->player)) {
-//                 return false;
-//             }
-//         }
-
-//         return true;
-//     }
-
-//     if (get_piece(board->board[start]) == KING) {
-//         return !is_attacked(board, end, !board->player);
-//     }
-
-//     bool legal = true;
-//     int king_square = get_lsb(board->pieces[make_piece(KING,
-//     board->player)]);
-
-//     make_move(board, move);
-//     if (is_attacked(board, king_square, board->player)) {
-//         legal = false;
-//     }
-//     unmake_move(board, move);
-
-//     return true;
-// }
-
+// Generate pseudo legal moves
 int generate_moves(const Board *board, Move *moves) {
     int player = board->player, count = 0;
 
+    // Generate moves for each piece type
     generate_pawn_moves(board, moves, &count);
     generate_piece_moves(board, moves, &count, make_piece(KNIGHT, player));
     generate_piece_moves(board, moves, &count, make_piece(BISHOP, player));
@@ -70,6 +40,7 @@ int generate_moves(const Board *board, Move *moves) {
     generate_piece_moves(board, moves, &count, make_piece(QUEEN, player));
     generate_piece_moves(board, moves, &count, make_piece(KING, player));
 
+    // Generate castling moves if they are legal
     int castling = board->state[board->ply].castling;
     if (castling) {
         if (board->player == WHITE) {
@@ -112,6 +83,7 @@ int generate_moves(const Board *board, Move *moves) {
     return count;
 }
 
+// Generate only legal moves
 int generate_legal_moves(Board *board, Move *moves) {
     Move pseudo_moves[MAX_MOVES];
     int count = 0, pseudo_count = generate_moves(board, pseudo_moves);
@@ -127,10 +99,12 @@ int generate_legal_moves(Board *board, Move *moves) {
     return count;
 }
 
+// Generate all moves for a piece type
 static void generate_piece_moves(const Board *board, Move *moves, int *count,
                                  int piece) {
     Bitboard pieces = board->pieces[piece];
 
+    // Iterate over each square in the piece bitboard
     while (pieces) {
         int start = pop_lsb(&pieces);
 
@@ -141,11 +115,13 @@ static void generate_piece_moves(const Board *board, Move *moves, int *count,
     }
 }
 
+// Generate all pawn moves
 static void generate_pawn_moves(const Board *board, Move *moves, int *count) {
     int piece = make_piece(PAWN, board->player);
     int up = UP, upleft = UPLEFT, upright = UPRIGHT;
     Bitboard rank3 = UINT64_C(0xFF0000), rank7 = UINT64_C(0xFF000000000000);
 
+    // Flip direction if player is black
     if (board->player == BLACK) {
         rank3 = UINT64_C(0xFF0000000000);
         rank7 = UINT64_C(0xFF00);
@@ -157,42 +133,16 @@ static void generate_pawn_moves(const Board *board, Move *moves, int *count) {
     Bitboard pawns = board->pieces[piece] & ~rank7;
     Bitboard empty = ~board->occupancies[2];
 
+    Bitboard seventh_pawns = board->pieces[piece] & rank7;
     Bitboard single_push = shift_bit(pawns, up) & empty;
     Bitboard double_push = shift_bit(single_push & rank3, up) & empty;
-    while (single_push) {
-        int end = pop_lsb(&single_push);
-        moves[(*count)++] = encode_move(end - up, end, 0, 0);
-    }
-    while (double_push) {
-        int end = pop_lsb(&double_push);
-        moves[(*count)++] = encode_move(end - up - up, end, 0, 0);
-    }
 
-    while (pawns) {
-        int start = pop_lsb(&pawns);
-
-        Bitboard attacks = get_attacks(board, start, PAWN);
-        while (attacks) {
-            moves[(*count)++] = encode_move(start, pop_lsb(&attacks), 0, 0);
-        }
-    }
-
-    int ep = board->state[board->ply].enpassant;
-    if (ep != NO_SQUARE) {
-        if ((ep & 7) != 7 && board->board[ep - upleft] == piece) {
-            moves[(*count)++] = encode_move(ep - upleft, ep, ENPASSANT, 0);
-        }
-        if ((ep & 7) != 0 && board->board[ep - upright] == piece) {
-            moves[(*count)++] = encode_move(ep - upright, ep, ENPASSANT, 0);
-        }
-    }
-
-    Bitboard seventh = board->pieces[piece] & rank7;
-    if (seventh) {
+    // Promotion moves
+    if (seventh_pawns) {
         Bitboard enemies = board->occupancies[!board->player];
-        Bitboard left = shift_bit(seventh, upleft) & enemies;
-        Bitboard right = shift_bit(seventh, upright) & enemies;
-        Bitboard middle = shift_bit(seventh, up) & empty;
+        Bitboard left = shift_bit(seventh_pawns, upleft) & enemies;
+        Bitboard right = shift_bit(seventh_pawns, upright) & enemies;
+        Bitboard middle = shift_bit(seventh_pawns, up) & empty;
 
         while (left) {
             int end = pop_lsb(&left);
@@ -213,6 +163,37 @@ static void generate_pawn_moves(const Board *board, Move *moves, int *count) {
             for (int i = KNIGHT; i <= QUEEN; i++) {
                 moves[(*count)++] = encode_move(end - up, end, PROMOTION, i);
             }
+        }
+    }
+
+    // Pawn attacks
+    while (pawns) {
+        int start = pop_lsb(&pawns);
+
+        Bitboard attacks = get_attacks(board, start, PAWN);
+        while (attacks) {
+            moves[(*count)++] = encode_move(start, pop_lsb(&attacks), 0, 0);
+        }
+    }
+
+    // Single and double push pawn moves
+    while (single_push) {
+        int end = pop_lsb(&single_push);
+        moves[(*count)++] = encode_move(end - up, end, 0, 0);
+    }
+    while (double_push) {
+        int end = pop_lsb(&double_push);
+        moves[(*count)++] = encode_move(end - up - up, end, 0, 0);
+    }
+
+    // Enpassant moves
+    int ep = board->state[board->ply].enpassant;
+    if (ep != NO_SQUARE) {
+        if ((ep & 7) != 7 && board->board[ep - upleft] == piece) {
+            moves[(*count)++] = encode_move(ep - upleft, ep, ENPASSANT, 0);
+        }
+        if ((ep & 7) != 0 && board->board[ep - upright] == piece) {
+            moves[(*count)++] = encode_move(ep - upright, ep, ENPASSANT, 0);
         }
     }
 }

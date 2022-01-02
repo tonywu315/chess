@@ -1,11 +1,9 @@
 #include "attacks.h"
+#include "benchmark.h"
 #include "bitboard.h"
 #include "evaluation.h"
 #include "game.h"
 
-#include "benchmark.h"
-
-/* Start game */
 int main(void) {
     Board board;
 
@@ -13,7 +11,8 @@ int main(void) {
     init_evaluation();
     init_attacks();
 
-    start_singleplayer(&board, WHITE, 6);
+    int seconds = 10;
+    start_singleplayer(&board, WHITE, seconds);
 
     return SUCCESS;
 }

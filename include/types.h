@@ -4,16 +4,19 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #define VERSION 1.0
 
 #define MAX_PLY 64
+#define MAX_DEPTH 99
 #define MAX_MOVES 1024
 #define ARRAY_SIZE 128
 #define SUCCESS 0

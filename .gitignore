@@ -1,6 +1,9 @@
 # Visual Studio Code
 /.vscode
 
+# Format File
+.clang-format
+
 # Executable files
 *.exe
 *.out

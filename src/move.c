@@ -2,6 +2,7 @@
 #include "move_generation.h"
 #include "search.h"
 
+// Mask for castling rights lost if piece on square changes
 static const int castling_mask[64] = {
     13, 15, 15, 15, 12, 15, 15, 14, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
@@ -17,6 +18,7 @@ static inline void move_promotion(Board *board, int square, int piece);
 static inline void unmove_castle(Board *board, int start, int end);
 static inline void place_piece(Board *board, int square, int piece);
 
+// Make a move on the board
 void make_move(Board *board, Move move) {
     State state = board->state[board->ply];
 
@@ -26,30 +28,36 @@ void make_move(Board *board, Move move) {
     int piece = board->board[start];
     int capture = board->board[end];
 
+    // Set current state
     state.capture = capture;
     state.castling &= castling_mask[start] & castling_mask[end];
     state.enpassant = NO_SQUARE;
     state.draw_ply++;
 
     if (flag == CASTLING) {
+        // Castle move
         move_castle(board, start, end);
     } else if (flag == ENPASSANT) {
+        // Enpassant move
         state.capture = board->board[8 * (start / 8) + (end & 7)];
         move_enpassant(board, start, end);
         state.draw_ply = 0;
     } else {
         if (capture == NO_PIECE) {
+            // Quiet move
             move_piece(board, start, end);
         } else {
+            // Capture move
             move_capture(board, start, end);
             state.draw_ply = 0;
         }
 
         if (get_piece(piece) == PAWN) {
-            /* Double pawn push */
+            // Double pawn push sets enpassant square
             if ((start ^ end) == 16) {
                 state.enpassant = start + (get_color(piece) == WHITE ? 8 : -8);
             } else if (flag == PROMOTION) {
+                // Promotion move
                 move_promotion(board, end, get_move_promotion(move) + KNIGHT);
             }
 
@@ -57,24 +65,30 @@ void make_move(Board *board, Move move) {
         }
     }
 
+    // Increment ply, save state, and switch player
     board->state[++board->ply] = state;
     board->player = !board->player;
 }
 
+// Undo a move on the board
 void unmake_move(Board *board, Move move) {
     State state = board->state[board->ply];
     int start = get_move_start(move);
     int end = get_move_end(move);
     int flag = get_move_flag(move);
 
+    // Switch player
     board->player = !board->player;
 
     if (flag == CASTLING) {
+        // Undo castle
         unmove_castle(board, start, end);
     } else {
+        // Move end square to start square
         move_piece(board, end, start);
 
         if (state.capture != NO_PIECE) {
+            // Place captured piece back on the board
             if (flag == ENPASSANT) {
                 place_piece(board, 8 * (start / 8) + (end & 7), state.capture);
             } else {
@@ -82,47 +96,17 @@ void unmake_move(Board *board, Move move) {
             }
         }
 
+        // Replace promoted piece with pawn
         if (flag == PROMOTION) {
             move_promotion(board, start, PAWN);
         }
     }
 
+    // Decrement ply
     board->ply--;
 }
 
-int move_legal(Board *board, Move move) {
-    Move moves[MAX_MOVES];
-    int count = generate_legal_moves(board, moves);
-
-    /* Iterates through all legal moves and checks if the move is in there */
-    for (int i = 0; i < count; i++) {
-        if ((moves[i] & UINT16_C(0x3FFF)) == (move & UINT16_C(0x3FFF))) {
-            make_move(board, moves[i]);
-            return SUCCESS;
-        }
-    }
-
-    return FAILURE;
-}
-
-int move_computer(Board *board, int depth) {
-    Line mainline;
-    int score = search(board, -INT_MAX, INT_MAX, 0, depth, &mainline);
-
-    /* Checks if engine is going to be checkmated */
-    if (score == -INT_MAX) {
-        Move moves[MAX_MOVES];
-        generate_legal_moves(board, moves);
-        make_move(board, moves[0]);
-
-        debug_printf("%s\n", "Computer is getting checkmated");
-    } else {
-        make_move(board, mainline.moves[0]);
-    }
-
-    return score;
-}
-
+// Move piece and update bitboards
 static inline void move_piece(Board *board, int start, int end) {
     int piece = board->board[start];
     Bitboard pieces = create_bit(start) | create_bit(end);
@@ -135,6 +119,7 @@ static inline void move_piece(Board *board, int start, int end) {
     board->board[end] = piece;
 }
 
+// Move piece, capture, and update bitboards
 static inline void move_capture(Board *board, int start, int end) {
     int piece = board->board[start];
     int capture = board->board[end];
@@ -150,6 +135,7 @@ static inline void move_capture(Board *board, int start, int end) {
     board->board[end] = piece;
 }
 
+// Castle and update bitboards
 static inline void move_castle(Board *board, int start, int end) {
     int side = start < end;
     int king_square = start + (side ? 2 : -2);
@@ -170,6 +156,7 @@ static inline void move_castle(Board *board, int start, int end) {
     board->board[rook_square] = rook;
 }
 
+// Capture enpassant and update bitboards
 static inline void move_enpassant(Board *board, int start, int end) {
     int pawn = board->board[start];
     int enemy = 8 * (start / 8) + (end & 7);
@@ -187,6 +174,7 @@ static inline void move_enpassant(Board *board, int start, int end) {
     board->board[enemy] = NO_PIECE;
 }
 
+// Place promoted piece on square and update bitboards
 static inline void move_promotion(Board *board, int square, int piece) {
     int pawn = board->board[square];
     Bitboard bitboard = create_bit(square);
@@ -201,6 +189,7 @@ static inline void move_promotion(Board *board, int square, int piece) {
     board->board[square] = piece;
 }
 
+// Undo castle and update bitboards
 static inline void unmove_castle(Board *board, int start, int end) {
     int side = start < end;
     int king_square = start + (side ? 2 : -2);
@@ -221,6 +210,7 @@ static inline void unmove_castle(Board *board, int start, int end) {
     board->board[rook_square] = NO_PIECE;
 }
 
+// Place piece and update bitboards
 static inline void place_piece(Board *board, int square, int piece) {
     Bitboard bitboard = create_bit(square);
 

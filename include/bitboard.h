@@ -1,7 +1,7 @@
 #ifndef BITBOARD_H
 #define BITBOARD_H
 
-#include "constants.h"
+#include "types.h"
 
 void init_board(Board *board);
 void start_board(Board *board);

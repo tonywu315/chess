@@ -1,3 +1,4 @@
+
 #include "benchmark.h"
 #include "attacks.h"
 #include "bitboard.h"
@@ -5,20 +6,20 @@
 #include "move_generation.h"
 
 /*
-CURRENT PERFORMANCE FOR DEPTH 6
-perft:           55.802 MNPS
-make_unmake:     110.619 MNPS
+    CURRENT PERFORMANCE FOR DEPTH 6
+    perft:           57.967 MNPS
+    make_unmake:     110.619 MNPS
 
-Bulk counting:
-speedy_perft:    307.922 MNPS
-pseudo_perft:    322.456 MNPS
+    Bulk counting:
+    speedy_perft:    308.273 MNPS
+    pseudo_perft:    331.819 MNPS
 */
 
 static inline void speedy_perft(Board *board, int depth, U64 *nodes);
 static inline void pseudo_perft(Board *board, int depth, U64 *nodes);
 static inline void make_unmake(Board *board, int depth, U64 *nodes);
 
-/* Computes time to complete task */
+// Compute time to complete task
 void benchmark(Board *board, int depth) {
     U64 nodes = 0;
     double time;
@@ -33,8 +34,7 @@ void benchmark(Board *board, int depth) {
     printf("Time: %lf seconds, MNPS: %.3f\n", time, nodes / (time * 1000000));
 }
 
-static int a;
-/* Performance test for enumerating all moves to a certain depth */
+// Performance test for enumerating all moves to a certain depth
 void perft(Board *board, int depth, U64 *nodes) {
     Move moves[MAX_MOVES];
 
@@ -53,7 +53,7 @@ void perft(Board *board, int depth, U64 *nodes) {
     }
 }
 
-/* Performance test for enumerating mostly legal moves to a certain depth */
+// Performance test for enumerating mostly legal moves to a certain depth
 static inline void speedy_perft(Board *board, int depth, U64 *nodes) {
     Move moves[MAX_MOVES];
     int count = generate_moves(board, moves);
@@ -71,7 +71,7 @@ static inline void speedy_perft(Board *board, int depth, U64 *nodes) {
     }
 }
 
-/* Performance test for enumerating all pseudo legal moves to a certain depth */
+// Performance test for enumerating all pseudo legal moves to a certain depth
 static inline void pseudo_perft(Board *board, int depth, U64 *nodes) {
     Move moves[MAX_MOVES];
     int count = generate_moves(board, moves);
@@ -87,7 +87,7 @@ static inline void pseudo_perft(Board *board, int depth, U64 *nodes) {
     }
 }
 
-/* Tests speed to make and unmake depth * 100 million times */
+// Tests speed to make and unmake depth * 100 million times
 static inline void make_unmake(Board *board, int depth, U64 *nodes) {
     U64 hundred_million = 100000000;
     Move move = encode_move(E2, E4, 0, 0);
