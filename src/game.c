@@ -24,14 +24,13 @@ void start_multiplayer(Board *board) { start_game(board, false, 0, 0); }
 // Start chess game
 static void start_game(Board *board, bool mode, int player, int time) {
     Move move;
-    Line line;
     int score = eval(board);
 
     printf("\n=== Chess v%s ===\n", VERSION);
 
     // Computer moves first if player is black
     if (mode && player == BLACK) {
-        score = search_position(board, &move, time);
+        score = -search_position(board, &move, time);
         make_move(board, move);
         game_moves[game_ply++] = move;
     }
@@ -56,7 +55,7 @@ static void start_game(Board *board, bool mode, int player, int time) {
 
         // Computer moves if it is singleplayer
         if (mode) {
-            score = search_position(board, &move, time);
+            score = -search_position(board, &move, time);
             make_move(board, move);
             game_moves[game_ply++] = move;
             status = game_status(board);
@@ -93,16 +92,16 @@ static int get_move(Board *board, Move *move, bool mode) {
     // Get promotion piece
     switch (tolower(input[4])) {
     case 'n':
-        promotion = 0;
+        promotion = KNIGHT;
         break;
     case 'b':
-        promotion = 1;
+        promotion = BISHOP;
         break;
     case 'r':
-        promotion = 2;
+        promotion = ROOK;
         break;
     case 'q':
-        promotion = 3;
+        promotion = QUEEN;
         break;
     }
 
@@ -174,7 +173,7 @@ static int move_legal(Board *board, Move move) {
 
     // Iterate through all legal moves and check if the move is in there */
     for (int i = 0; i < count; i++) {
-        if ((moves[i] & UINT16_C(0x3FFF)) == (move & UINT16_C(0x3FFF))) {
+        if ((moves[i] & UINT16_C(0xCFFF)) == (move & UINT16_C(0xCFFF))) {
             make_move(board, moves[i]);
             return SUCCESS;
         }

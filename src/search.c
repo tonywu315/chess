@@ -4,8 +4,6 @@
 #include "move.h"
 #include "move_generation.h"
 
-#define TIME_OUT 100000
-
 static int time_over;
 static void *chess_clock(void *time);
 
@@ -31,7 +29,7 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
     int count = generate_moves(board, moves), moves_count = 0;
     for (int i = 0; i < count; i++) {
         if (time_over) {
-            return TIME_OUT;
+            return 0;
         }
 
         int score;
@@ -78,8 +76,8 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
 int search_position(Board *board, Move *move, int time) {
     pthread_t tid;
     Line mainline;
-    Move final_move;
-    int final_score, score = 0;
+    Move final_move = {0};
+    int final_score = 0, score = 0;
     int alpha = -INT_MAX, beta = INT_MAX;
 
     time_over = false;
@@ -91,9 +89,17 @@ int search_position(Board *board, Move *move, int time) {
         // TODO: implement transposition tables
 
         score = search(board, alpha, beta, 0, i, &mainline);
-        if (score != TIME_OUT) {
+
+        // Stop searching if time is over
+        if (!time_over) {
             final_move = mainline.moves[0];
             final_score = score;
+        } else {
+            if (DEBUG_FLAG) {
+                printf("Depth: %d\n", i - 1);
+            }
+
+            break;
         }
     }
 

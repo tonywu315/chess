@@ -7,12 +7,12 @@
 
 /*
     CURRENT PERFORMANCE FOR DEPTH 6
-    perft:           57.967 MNPS
-    make_unmake:     110.619 MNPS
+    perft:           61.145 MNPS
+    make_unmake:     115.302 MNPS
 
     Bulk counting:
-    speedy_perft:    308.273 MNPS
-    pseudo_perft:    331.819 MNPS
+    speedy_perft:    354.398 MNPS
+    pseudo_perft:    370.105 MNPS
 */
 
 static inline void speedy_perft(Board *board, int depth, U64 *nodes);

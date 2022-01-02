@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+typedef unsigned long long U64;
+
 void benchmark(Board *board, int depth);
 void perft(Board *board, int depth, U64 *nodes);
 

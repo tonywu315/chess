@@ -31,30 +31,19 @@
 #define ENPASSANT 2
 #define CASTLING 3
 
-/* Debug macro only appears if DEBUG is passed in */
-/* Compiler optimizes out functions if DEBUG_VALUE is not set */
+// Debug macro only appears if DEBUG is passed in
 #ifdef DEBUG
-#define DEBUG_VALUE true
+#define DEBUG_FLAG true
 #else
-#define DEBUG_VALUE false
+#define DEBUG_FLAG false
 #endif
 
-/* Prints debug information */
+// Prints debug information
 #define debug_printf(fmt, ...)                                                 \
     do {                                                                       \
-        if (DEBUG_VALUE)                                                       \
+        if (DEBUG_FLAG)                                                        \
             fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
                     __LINE__, __func__, __VA_ARGS__);                          \
-    } while (0)
-
-/* Asserts that expression is true and exits if it is not */
-#define debug_assert(expression)                                               \
-    do {                                                                       \
-        if (DEBUG_VALUE && !(expression)) {                                    \
-            fprintf(stderr, "[%s] %s:%d in %s(): %s FAILED\n", __TIME__,       \
-                    __FILE__, __LINE__, __func__, #expression);                \
-            exit(1);                                                           \
-        }                                                                      \
     } while (0)
 
 /*
@@ -64,15 +53,15 @@
 
     00 00 000000 111111    start square
     00 00 111111 000000    end square
-    00 11 000000 000000    promotion piece
-    11 00 000000 000000    special flags
+    00 11 000000 000000    special flags
+    11 00 000000 000000    promotion piece
 
     Special flags: promotion = 1, enpassant = 2, castling = 3
 */
 typedef uint16_t Move;
 
+// each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
-typedef unsigned long long U64;
 
 typedef struct state {
     int capture;
@@ -149,6 +138,8 @@ enum Result {
 };
 // clang-format on
 
+// Move and piece functions
+
 static inline Move encode_move(int start, int end, int flag, int promotion) {
     return start | (end << 6) | (flag << 12) | ((promotion - KNIGHT) << 14);
 }
@@ -164,7 +155,7 @@ static inline int make_piece(int piece, int color) {
     return piece | (color << 3);
 }
 
-/* Bitboard Functions */
+// Bitboard functions
 
 static inline int get_bit(Bitboard bitboard, int square) {
     return bitboard & (UINT64_C(1) << square) ? 1 : 0;
@@ -207,9 +198,41 @@ static inline bool in_bounds(int start, int direction) {
 static inline bool valid_row(int row) { return row >= 0 && row <= 7; }
 static inline int make_square(int file, int rank) { return file + (rank << 3); }
 
-/* Hamming Weight Algorithm, 12 Arithmetic Operations */
+// GCC/Clang compatible compiler
+#if defined(__GNUC__)
+
+// Get number of bits set
 static inline int get_population(Bitboard bitboard) {
-    /* 2-adic fractions: -1/3, -1/5, -1/17, -1/255 */
+    return __builtin_popcountll(bitboard);
+}
+
+// Get index of least significant bit
+static inline int get_lsb(Bitboard bitboard) {
+    return __builtin_ctzll(bitboard);
+}
+
+// Microsoft C/C++ compatible compiler
+#elif defined(_MSC_VER) && defined(_WIN64)
+
+#include <nmmintrin.h>
+// Get number of bits set
+static inline int get_population(Bitboard bitboard) {
+    return (int)_mm_popcnt_u64(bitboard);
+}
+
+#include <intrin.h>
+// Get index of least significant bit
+static inline int get_lsb(Bitboard bitboard) {
+    unsigned long index;
+    return _BitScanForward64(&index, bitboard);
+    return (int)index;
+}
+
+#else
+
+// Hamming Weight Algorithm, 12 Arithmetic Operations
+static inline int get_population(Bitboard bitboard) {
+    // 2-adic fractions: -1/3, -1/5, -1/17, -1/255
     const Bitboard k1 = UINT64_C(0x5555555555555555);
     const Bitboard k2 = UINT64_C(0x3333333333333333);
     const Bitboard k3 = UINT64_C(0x0F0F0F0F0F0F0F0F);
@@ -221,26 +244,20 @@ static inline int get_population(Bitboard bitboard) {
     return (int)((bitboard * kf) >> 56);
 }
 
-/* ~35% faster for 1 bit, similar for 2 bits */
-static inline int get_sparse_population(Bitboard bitboard) {
-    int count = 0;
-    while (bitboard) {
-        bitboard &= bitboard - 1;
-        count++;
-    }
-    return count;
-}
-
+// Bitscan using De Bruijn multiplication
 static inline int get_lsb(Bitboard bitboard) {
     static const int index[64] = {
         0,  1,  48, 2,  57, 49, 28, 3,  61, 58, 50, 42, 38, 29, 17, 4,
         62, 55, 59, 36, 53, 51, 43, 22, 45, 39, 33, 30, 24, 18, 12, 5,
         63, 47, 56, 27, 60, 41, 37, 16, 54, 35, 52, 21, 44, 32, 23, 11,
         46, 26, 40, 15, 34, 20, 31, 10, 25, 14, 19, 9,  13, 8,  7,  6};
-    static const U64 debruijn64 = UINT64_C(0x03F79D71B4CB0A89);
+    static const Bitboard debruijn64 = UINT64_C(0x03F79D71B4CB0A89);
     return index[((bitboard & -bitboard) * debruijn64) >> 58];
 }
 
+#endif
+
+// Pop the least significant bit
 static inline int pop_lsb(Bitboard *bitboard) {
     int lsb = get_lsb(*bitboard);
     *bitboard &= *bitboard - 1;
