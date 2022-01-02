@@ -26,7 +26,7 @@ void benchmark(Board *board, int depth) {
     clock_t begin_time, end_time;
 
     begin_time = clock();
-    pseudo_perft(board, depth, &nodes);
+    perft(board, depth, &nodes);
     end_time = clock();
     time = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
 
