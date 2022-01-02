@@ -13,10 +13,10 @@ static void *chess_clock(void *time);
 int search(Board *board, int alpha, int beta, int ply, int depth,
            Line *mainline) {
     Move moves[MAX_MOVES];
-    Line line;
-    bool check = in_check(board, board->player);
+    Line line = {0, {0}};
 
     // Check extension
+    bool check = in_check(board, board->player);
     if (check) {
         depth++;
     }
@@ -94,9 +94,6 @@ int search_position(Board *board, Move *move, int time) {
         if (score != TIME_OUT) {
             final_move = mainline.moves[0];
             final_score = score;
-        } else {
-            printf("depth reached: %d\n", i);
-            break;
         }
     }
 

@@ -27,7 +27,7 @@ static void start_game(Board *board, bool mode, int player, int time) {
     Line line;
     int score = eval(board);
 
-    printf("\n=== Chess Program ===\n");
+    printf("\n=== Chess v%s ===\n", VERSION);
 
     // Computer moves first if player is black
     if (mode && player == BLACK) {

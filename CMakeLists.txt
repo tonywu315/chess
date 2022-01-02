@@ -3,7 +3,9 @@ project(chess)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 set(CMAKE_C_FLAGS "-O3")
-set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
 
 # C files
 set(SOURCES
@@ -20,9 +22,7 @@ set(SOURCES
 # Create executable file
 add_executable(chess.out ${SOURCES} src/main.c)
 target_include_directories(chess.out PRIVATE include)
-
-find_package(Threads REQUIRED)
-target_link_libraries(chess.out PRIVATE Threads::Threads)
+target_link_libraries(chess.out Threads::Threads)
 
 # Chess library file for tests
 add_library(chesslib ${SOURCES})
