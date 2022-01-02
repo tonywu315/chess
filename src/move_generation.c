@@ -30,15 +30,15 @@ void print_move(Move move) {
 
 // Generate pseudo legal moves
 int generate_moves(const Board *board, Move *moves) {
-    int player = board->player, count = 0;
+    int count = 0;
 
     // Generate moves for each piece type
     generate_pawn_moves(board, moves, &count);
-    generate_piece_moves(board, moves, &count, make_piece(KNIGHT, player));
-    generate_piece_moves(board, moves, &count, make_piece(BISHOP, player));
-    generate_piece_moves(board, moves, &count, make_piece(ROOK, player));
-    generate_piece_moves(board, moves, &count, make_piece(QUEEN, player));
-    generate_piece_moves(board, moves, &count, make_piece(KING, player));
+    generate_piece_moves(board, moves, &count, KNIGHT);
+    generate_piece_moves(board, moves, &count, BISHOP);
+    generate_piece_moves(board, moves, &count, ROOK);
+    generate_piece_moves(board, moves, &count, QUEEN);
+    generate_piece_moves(board, moves, &count, KING);
 
     // Generate castling moves if they are legal
     int castling = board->state[board->ply].castling;
@@ -100,9 +100,9 @@ int generate_legal_moves(Board *board, Move *moves) {
 }
 
 // Generate all moves for a piece type
-static void generate_piece_moves(const Board *board, Move *moves, int *count,
+static inline void generate_piece_moves(const Board *board, Move *moves, int *count,
                                  int piece) {
-    Bitboard pieces = board->pieces[piece];
+    Bitboard pieces = board->pieces[make_piece(piece, board->player)];
 
     // Iterate over each square in the piece bitboard
     while (pieces) {
@@ -116,7 +116,7 @@ static void generate_piece_moves(const Board *board, Move *moves, int *count,
 }
 
 // Generate all pawn moves
-static void generate_pawn_moves(const Board *board, Move *moves, int *count) {
+static inline void generate_pawn_moves(const Board *board, Move *moves, int *count) {
     int piece = make_piece(PAWN, board->player);
     int up = UP, upleft = UPLEFT, upright = UPRIGHT;
     Bitboard rank3 = UINT64_C(0xFF0000), rank7 = UINT64_C(0xFF000000000000);

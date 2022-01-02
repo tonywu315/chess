@@ -45,7 +45,7 @@ void init_attacks() {
 
 // Get attack bitboard by piece on square excluding own color
 Bitboard get_attacks(const Board *board, int square, int piece) {
-    switch (get_piece(piece)) {
+    switch (piece) {
     case PAWN:
         return pawn_attacks[board->player][square] &
                board->occupancies[!board->player];

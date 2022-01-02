@@ -69,7 +69,7 @@ void print_board(const Board *board, int score) {
     }
 
     // Print extra information for debugging
-    if (DEBUG_VALUE) {
+    if (DEBUG_FLAG) {
         State state = board->state[board->ply];
         printf("\nCastling: %c%c%c%c\n", state.castling & CASTLE_WK ? 'K' : '-',
                state.castling & CASTLE_WQ ? 'Q' : '-',
