@@ -4,32 +4,31 @@
 #include "move.h"
 #include "move_generation.h"
 
-/* Alpha beta pruning */
+// Alpha beta algorithm
 int search(Board *board, int alpha, int beta, int ply, int depth,
            Line *mainline) {
     Move moves[MAX_MOVES];
     Line line;
-
     bool check = in_check(board, board->player);
 
-    /* Check extension */
+    // Check extension
     if (check) {
         depth++;
     }
 
-    /* TODO: add quiescence search */
+    // TODO: add quiescence search
     if (depth == 0) {
         mainline->length = 0;
         return eval(board);
     }
 
-    /* Iterate over all moves */
+    // Iterate over all moves
     int count = generate_moves(board, moves), moves_count = 0;
     for (int i = 0; i < count; i++) {
         int score;
         make_move(board, moves[i]);
 
-        /* Removes illegal moves */
+        // Removes illegal moves
         if (in_check(board, !board->player)) {
             unmake_move(board, moves[i]);
             continue;
@@ -37,27 +36,28 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
 
         moves_count++;
 
-        /* Calculate score of opponent */
+        // Calculate score of opponent
         score = -search(board, -beta, -alpha, ply + 1, depth - 1, &line);
         unmake_move(board, moves[i]);
 
-        /* Alpha cutoff */
+        // Alpha cutoff
         if (score > alpha) {
+            // Update mainline
             mainline->moves[0] = moves[i];
             memcpy(mainline->moves + 1, line.moves, line.length * sizeof(Move));
             mainline->length = line.length + 1;
 
-            /* Beta cutoff */
+            // Beta cutoff
             if (score >= beta) {
                 alpha = beta;
                 break;
-            } else {
-                alpha = score;
             }
+
+            alpha = score;
         }
     }
 
-    /* Checkmate and stalemate */
+    // Checkmate and stalemate
     if (moves_count == 0) {
         alpha = check ? -INT_MAX + ply : 0;
     }

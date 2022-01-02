@@ -1,6 +1,6 @@
 #include "evaluation.h"
 
-/* Uses pesto evaluation function */
+// Use pesto's evaluation function
 int middle_value[6] = {82, 337, 365, 477, 1025, 0};
 int end_value[6] = {94, 281, 297, 512, 936, 0};
 static const int middle_position[6][64] = {
@@ -95,6 +95,7 @@ static const int phase_table[6] = {0, 1, 1, 2, 4, 0};
 static int middle_table[12][64];
 static int end_table[12][64];
 
+// Initialize evaluation tables
 void init_evaluation() {
     for (int square = A1; square <= H8; square++) {
         for (int piece = PAWN; piece <= KING; piece++) {
@@ -110,10 +111,11 @@ void init_evaluation() {
     }
 }
 
-/* Very simple evaluation function for pieces */
-int eval(Board *board) {
+// Evaluate current position and return centipawn score
+int eval(const Board *board) {
     int phase = 0, middle_score = 0, end_score = 0;
 
+    // Iterate over all pieces
     for (int piece = PAWN; piece <= KING; piece++) {
         Bitboard pieces = board->pieces[piece];
         Bitboard enemies = board->pieces[piece + 8];
@@ -132,10 +134,13 @@ int eval(Board *board) {
         }
     }
 
+    // Cap phase in case of early promotion
     if (phase > 24) {
         phase = 24;
     }
+    // Calculate weighted score based on game phase
     int score = (middle_score * phase + end_score * (24 - phase)) / 24;
 
+    // Flip score for black
     return board->player == WHITE ? score : -score;
 }

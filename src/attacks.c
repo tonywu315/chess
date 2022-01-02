@@ -1,5 +1,6 @@
 #include "attacks.h"
 
+// Parameters for perfect hashing algorithm to index attack lookup tables
 typedef struct magics {
     Bitboard *attacks;
     Bitboard mask;
@@ -7,7 +8,7 @@ typedef struct magics {
     int shift;
 } Magic;
 
-/* Lookup tables and Fancy Magic Bitboards */
+// Lookup tables and Fancy Magic Bitboards
 static Bitboard pawn_attacks[2][64];
 static Bitboard knight_attacks[64];
 static Bitboard king_attacks[64];
@@ -28,6 +29,7 @@ static inline Bitboard get_rook_attacks(int square, Bitboard occupancy);
 static inline Bitboard get_bishop_attacks(int square, Bitboard occupancy);
 static Bitboard sparse_random();
 
+// Initialize attack lookup tables
 void init_attacks() {
     for (int square = 0; square < 64; square++) {
         pawn_attacks[WHITE][square] = init_pawn_attacks(square, WHITE);
@@ -36,10 +38,12 @@ void init_attacks() {
         king_attacks[square] = init_king_attacks(square);
     }
 
+    // Find perfect hashing algorithm multiply number for rooks and bishops
     init_magics(ROOK);
     init_magics(BISHOP);
 }
 
+// Get attack bitboard by piece on square excluding own color
 Bitboard get_attacks(const Board *board, int square, int piece) {
     switch (get_piece(piece)) {
     case PAWN:
@@ -64,6 +68,7 @@ Bitboard get_attacks(const Board *board, int square, int piece) {
     return UINT64_C(0);
 }
 
+// Test if square is attacked by player
 bool is_attacked(const Board *board, int square, int player) {
     int shift = player == WHITE ? 0 : 8;
     return (pawn_attacks[!player][square] & board->pieces[PAWN + shift]) ||
@@ -75,11 +80,13 @@ bool is_attacked(const Board *board, int square, int player) {
             (board->pieces[BISHOP + shift] | board->pieces[QUEEN + shift]));
 }
 
+// Test if player is in check
 bool in_check(const Board *board, int player) {
     int king = get_lsb(board->pieces[make_piece(KING, player)]);
     return is_attacked(board, king, !player);
 }
 
+// Initialize pawn attack lookup table
 static Bitboard init_pawn_attacks(int square, int player) {
     Bitboard pawn = create_bit(square);
 
@@ -90,6 +97,7 @@ static Bitboard init_pawn_attacks(int square, int player) {
     }
 }
 
+// Initialize knight attack looukup table
 static Bitboard init_knight_attacks(int square) {
     static const Bitboard MASK_FILE_AB = UINT64_C(0xFCFCFCFCFCFCFCFC);
     static const Bitboard MASK_FILE_HG = UINT64_C(0x3F3F3F3F3F3F3F3F);
@@ -107,6 +115,7 @@ static Bitboard init_knight_attacks(int square) {
     return (height1 << 16) | (height1 >> 16) | (height2 << 8) | (height2 >> 8);
 }
 
+// Initialize king attack lookup table
 static Bitboard init_king_attacks(int square) {
     Bitboard king = create_bit(square);
     Bitboard attacks = shift_bit(king, LEFT) | shift_bit(king, RIGHT);
@@ -117,13 +126,16 @@ static Bitboard init_king_attacks(int square) {
     return attacks;
 }
 
+// Generate magics
 static void init_magics(int piece) {
     Bitboard occupancy[4096], attacks[4096], bitboard = UINT64_C(0);
-    int repeated[4096] = {0}, attacks_index = 0, found = 0;
+    int repeated[4096] = {0}, attacks_index = 0, attempts = 0;
 
+    // Iterate over all squares
     for (int square = A1; square <= H8; square++) {
         Magic magic;
 
+        // Set piece masks and starting index of lookup table
         if (piece == ROOK) {
             magic.attacks = &rook_attacks[attacks_index];
             magic.mask = get_rook_mask(square);
@@ -132,8 +144,10 @@ static void init_magics(int piece) {
             magic.mask = get_bishop_mask(square);
         }
 
+        // Set relevant bits
         magic.shift = 64 - get_population(magic.mask);
 
+        // Generate all subsets of piece mask and corresponding attack bitboard
         int count = 0;
         do {
             occupancy[count] = bitboard;
@@ -141,28 +155,39 @@ static void init_magics(int piece) {
             bitboard = (bitboard - magic.mask) & magic.mask;
         } while (bitboard);
 
-        for (int i = 0; i < count;) {
+        // Iterate until a magic is found
+        int i = 0;
+        do {
+            // Generate magic number candidate
             magic.magic = sparse_random();
+
+            // Discard numbers with less than 6 bits set in the first 8 bits
             if (get_population((magic.magic * magic.mask) >> 56) < 6) {
                 continue;
             }
 
-            found += 1;
+            attempts += 1;
+            // Iterate over each possible piece mask
             for (i = 0; i < count; i++) {
                 unsigned int index =
                     (int)(((occupancy[i] & magic.mask) * magic.magic) >>
                           magic.shift);
 
-                if (repeated[index] < found) {
-                    repeated[index] = found;
+                // Condition is only satisfied if all indices are unique
+                if (repeated[index] < attempts) {
+                    repeated[index] = attempts;
                     magic.attacks[index] = attacks[i];
                 } else if (magic.attacks[index] != attacks[i]) {
+                    // Break if magic number does not work
                     break;
                 }
             }
-        }
+        } while (i < count);
 
+        // Increase next starting index by number of indices taken
         attacks_index += 1 << (64 - magic.shift);
+
+        // Put magic in table
         if (piece == ROOK) {
             rook_magics[square] = magic;
         } else {
@@ -171,6 +196,7 @@ static void init_magics(int piece) {
     }
 }
 
+// Get rook masks
 static Bitboard get_rook_mask(int square) {
     const Bitboard files = UINT64_C(0x0001010101010100);
     const Bitboard ranks = UINT64_C(0x7E);
@@ -181,6 +207,7 @@ static Bitboard get_rook_mask(int square) {
     return attacks;
 }
 
+// Get bishop masks
 static Bitboard get_bishop_mask(int square) {
     Bitboard attacks = UINT64_C(0);
     int rank = square / 8, file = square % 8, r, f;
@@ -201,6 +228,7 @@ static Bitboard get_bishop_mask(int square) {
     return attacks;
 }
 
+// Get slider attacks given an occupancy bitboard to compute magics
 static Bitboard get_slider_attack(int square, Bitboard occupancy, int piece) {
     Bitboard attacks = UINT64_C(0);
     int rook_direction[4] = {UP, DOWN, LEFT, RIGHT};
@@ -219,21 +247,25 @@ static Bitboard get_slider_attack(int square, Bitboard occupancy, int piece) {
     return attacks;
 }
 
+// Get rook attacks using magic lookup tables and perfect hashing algorithm
 static inline Bitboard get_rook_attacks(int square, Bitboard occupancy) {
     Magic m = rook_magics[square];
     return m.attacks[((occupancy & m.mask) * m.magic) >> m.shift];
 }
 
+// Get bishop attacks using magic lookup tables and perfect hashing algorithm
 static inline Bitboard get_bishop_attacks(int square, Bitboard occupancy) {
     Magic m = bishop_magics[square];
     return m.attacks[((occupancy & m.mask) * m.magic) >> m.shift];
 }
 
+// Generate random 64 bit number with 1/8th bits set on average
 static inline Bitboard sparse_random() {
-    /* Fastest seed in first 100,000 seeds */
+    // Fastest seed out of 10 billion starting seeds
     static Bitboard seed = UINT64_C(0xAE793F42471A8799);
     Bitboard rand = ~UINT64_C(0);
 
+    // Pseudo random number generator
     for (int i = 0; i < 3; i++) {
         seed ^= seed >> 12;
         seed ^= seed << 25;

@@ -1,11 +1,9 @@
 #include "attacks.h"
+#include "benchmark.h"
 #include "bitboard.h"
 #include "evaluation.h"
 #include "game.h"
 
-#include "benchmark.h"
-
-/* Start game */
 int main(void) {
     Board board;
 

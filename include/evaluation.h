@@ -4,6 +4,6 @@
 #include "types.h"
 
 void init_evaluation();
-int eval(Board *board);
+int eval(const Board *board);
 
 #endif
