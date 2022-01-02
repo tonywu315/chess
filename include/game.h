@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-void start_singleplayer(Board *board, int player, int depth);
+void start_singleplayer(Board *board, int player, int time);
 void start_multiplayer(Board *board);
 
 #endif

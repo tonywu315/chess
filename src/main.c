@@ -11,7 +11,8 @@ int main(void) {
     init_evaluation();
     init_attacks();
 
-    start_singleplayer(&board, WHITE, 6);
+    int seconds = 10;
+    start_singleplayer(&board, WHITE, seconds);
 
     return SUCCESS;
 }

@@ -4,6 +4,11 @@
 #include "move.h"
 #include "move_generation.h"
 
+#define TIME_OUT 100000
+
+static int time_over;
+static void *chess_clock(void *time);
+
 // Alpha beta algorithm
 int search(Board *board, int alpha, int beta, int ply, int depth,
            Line *mainline) {
@@ -25,6 +30,10 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
     // Iterate over all moves
     int count = generate_moves(board, moves), moves_count = 0;
     for (int i = 0; i < count; i++) {
+        if (time_over) {
+            return TIME_OUT;
+        }
+
         int score;
         make_move(board, moves[i]);
 
@@ -63,4 +72,46 @@ int search(Board *board, int alpha, int beta, int ply, int depth,
     }
 
     return alpha;
+}
+
+// Search position for best move within time limit
+int search_position(Board *board, Move *move, int time) {
+    pthread_t tid;
+    Line mainline;
+    Move final_move;
+    int final_score, score = 0;
+    int alpha = -INT_MAX, beta = INT_MAX;
+
+    time_over = false;
+
+    pthread_create(&tid, NULL, chess_clock, (void *)&time);
+
+    // TODO: Iterative deepening
+    for (int i = 1; i <= 99; i++) {
+        // TODO: implement transposition tables
+
+        score = search(board, alpha, beta, 0, i, &mainline);
+        if (score != TIME_OUT) {
+            final_move = mainline.moves[0];
+            final_score = score;
+        } else {
+            printf("depth reached: %d\n", i);
+            break;
+        }
+    }
+
+    pthread_join(tid, NULL);
+
+    // Set move to mainline and return score
+    *move = final_move;
+    return final_score;
+}
+
+// Sleep time seconds
+static void *chess_clock(void *time) {
+    sleep(*(int *)time);
+
+    time_over = true;
+
+    return NULL;
 }

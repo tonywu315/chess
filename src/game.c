@@ -8,21 +8,21 @@
 static Move game_moves[MAX_MOVES];
 static int game_ply;
 
-static void start_game(Board *board, bool mode, int player, int depth);
+static void start_game(Board *board, bool mode, int player, int time);
 static int get_move(Board *board, Move *move, bool mode);
 static int move_legal(Board *board, Move move);
 static int game_status(Board *board);
 
 // Start singleplayer game
-void start_singleplayer(Board *board, int player_color, int depth) {
-    start_game(board, true, player_color, depth);
+void start_singleplayer(Board *board, int player_color, int time) {
+    start_game(board, true, player_color, time);
 }
 
 // Start multiplayer game
 void start_multiplayer(Board *board) { start_game(board, false, 0, 0); }
 
 // Start chess game
-static void start_game(Board *board, bool mode, int player, int depth) {
+static void start_game(Board *board, bool mode, int player, int time) {
     Move move;
     Line line;
     int score = eval(board);
@@ -31,9 +31,9 @@ static void start_game(Board *board, bool mode, int player, int depth) {
 
     // Computer moves first if player is black
     if (mode && player == BLACK) {
-        score = search(board, -INT_MAX, INT_MAX, 0, depth, &line);
-        make_move(board, line.moves[0]);
-        game_moves[game_ply++] = line.moves[0];
+        score = search_position(board, &move, time);
+        make_move(board, move);
+        game_moves[game_ply++] = move;
     }
 
     // Loop until game ends
@@ -56,9 +56,9 @@ static void start_game(Board *board, bool mode, int player, int depth) {
 
         // Computer moves if it is singleplayer
         if (mode) {
-            score = search(board, -INT_MAX, INT_MAX, 0, depth, &line);
-            make_move(board, line.moves[0]);
-            game_moves[game_ply++] = line.moves[0];
+            score = search_position(board, &move, time);
+            make_move(board, move);
+            game_moves[game_ply++] = move;
             status = game_status(board);
         }
     }
