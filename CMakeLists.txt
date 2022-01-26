@@ -23,6 +23,7 @@ set(SOURCES
     src/move_generation.c
     src/move.c
     src/search.c
+    src/transposition.c
 )
 
 # Create executable file

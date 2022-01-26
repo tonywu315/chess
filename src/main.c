@@ -7,9 +7,12 @@ int main(int argc, char **argv) {
     Board board;
     int seconds = 10;
 
-    start_board(&board);
-    init_evaluation();
     init_attacks();
+    init_evaluation();
+    init_hash_keys();
+    // init_transposition(64);
+
+    start_board(&board);
 
     if (argc == 2) {
         seconds = atoi(argv[1]);

@@ -1,6 +1,7 @@
 #include "bitboard.h"
 #include "move.h"
 #include "move_generation.h"
+#include "transposition.h"
 
 // Initialize board struct to create an empty board
 void init_board(Board *board) {
@@ -14,6 +15,7 @@ void init_board(Board *board) {
         board->board[square] = NO_PIECE;
     }
 
+    board->hash = get_hash(board);
     board->player = WHITE;
     board->ply = 0;
 }
@@ -171,6 +173,8 @@ void load_fen(Board *board, const char *fen) {
         board->occupancies[1] |= board->pieces[piece + 8];
     }
     board->occupancies[2] = board->occupancies[0] | board->occupancies[1];
+
+    board->hash = get_hash(board);
 }
 
 // Get string coordinates from square

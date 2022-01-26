@@ -27,7 +27,7 @@ static Bitboard get_bishop_mask(int square);
 static Bitboard get_slider_attack(int square, Bitboard occupancy, int piece);
 static inline Bitboard get_rook_attacks(int square, Bitboard occupancy);
 static inline Bitboard get_bishop_attacks(int square, Bitboard occupancy);
-static Bitboard sparse_random();
+static Bitboard sparse_rand64();
 
 // Initialize attack lookup tables
 void init_attacks() {
@@ -159,7 +159,7 @@ static void init_magics(int piece) {
         int i = 0;
         do {
             // Generate magic number candidate
-            magic.magic = sparse_random();
+            magic.magic = sparse_rand64();
 
             // Discard numbers with less than 6 bits set in the first 8 bits
             if (get_population((magic.magic * magic.mask) >> 56) < 6) {
@@ -260,18 +260,6 @@ static inline Bitboard get_bishop_attacks(int square, Bitboard occupancy) {
 }
 
 // Generate random 64 bit number with 1/8th bits set on average
-static inline Bitboard sparse_random() {
-    // Fastest seed out of 10 billion starting seeds
-    static Bitboard seed = UINT64_C(0xAE793F42471A8799);
-    Bitboard rand = ~UINT64_C(0);
-
-    // Pseudo random number generator
-    for (int i = 0; i < 3; i++) {
-        seed ^= seed >> 12;
-        seed ^= seed << 25;
-        seed ^= seed >> 27;
-        rand &= seed * UINT64_C(0x2545F4914F6CDD1D);
-    }
-
-    return rand;
+static inline Bitboard sparse_rand64() {
+    return rand64() & rand64() & rand64();
 }

@@ -78,7 +78,7 @@ int search_position(Board *board, Move *move, int time) {
     Line mainline;
     Move final_move = {0};
     int final_score = 0, score = 0;
-    int alpha = -INT_MAX, beta = INT_MAX;
+    int alpha = -INT16_MAX, beta = INT16_MAX;
 
     time_over = false;
 

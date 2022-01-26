@@ -16,7 +16,6 @@
 #define VERSION "2.0"
 
 #define MAX_PLY 64
-#define MAX_DEPTH 99
 #define MAX_MOVES 1024
 #define ARRAY_SIZE 128
 #define SUCCESS 0
@@ -72,12 +71,21 @@ typedef struct state {
 
 typedef struct board {
     State state[MAX_MOVES];
+    Bitboard hash;
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
     int player;
     int ply;
 } Board;
+
+typedef struct transposition {
+    Bitboard hash;
+    Move move;
+    int8_t score;
+    uint8_t depth;
+    uint8_t flags; // 6 bits ply, 2 bits node type
+} Transposition;
 
 typedef struct line {
     int length;
@@ -197,6 +205,17 @@ static inline bool in_bounds(int start, int direction) {
 
 static inline bool valid_row(int row) { return row >= 0 && row <= 7; }
 static inline int make_square(int file, int rank) { return file + (rank << 3); }
+
+// Pseudo random number generator
+static inline Bitboard rand64() {
+    // Fastest seed out of 10 billion starting seeds for magic number generation
+    static Bitboard seed = UINT64_C(0xAE793F42471A8799);
+
+    seed ^= seed >> 12;
+    seed ^= seed << 25;
+    seed ^= seed >> 27;
+    return seed * UINT64_C(0x2545F4914F6CDD1D);
+}
 
 // GCC/Clang compatible compiler
 #if defined(__GNUC__)
