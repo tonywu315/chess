@@ -57,10 +57,10 @@ void print_board(const Board *board, int score) {
     }
 
     // Print score unless end of game
-    if (score != INT_MAX) {
+    if (abs(score) != INFINITY) {
         // Prints mate in x if detected
-        if (abs(score) >= INT_MAX - 100) {
-            printf("Mate in %d\n", (INT_MAX - abs(score)) / 2);
+        if (abs(score) >= INFINITY - 100) {
+            printf("Mate in %d\n", (INFINITY - abs(score)) / 2);
         } else {
             printf("Evaluation: %d\n", score);
         }

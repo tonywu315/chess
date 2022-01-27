@@ -6,7 +6,7 @@
 #include "search.h"
 
 static Move game_moves[MAX_MOVES];
-static int game_ply;
+int game_ply = 0;
 
 static void start_game(Board *board, bool mode, int player, int time);
 static int get_move(Board *board, Move *move, bool mode);

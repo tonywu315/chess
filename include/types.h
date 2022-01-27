@@ -15,11 +15,14 @@
 
 #define VERSION "2.0"
 
-#define MAX_PLY 64
+#define MAX_DEPTH 64
 #define MAX_MOVES 1024
 #define ARRAY_SIZE 128
 #define SUCCESS 0
 #define FAILURE 1
+
+#define INFINITY 30000
+#define INVALID_SCORE 32767
 
 #define CASTLE_WK 1
 #define CASTLE_WQ 2
@@ -62,6 +65,8 @@ typedef uint16_t Move;
 // each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
 
+typedef uint64_t U64;
+
 typedef struct state {
     int capture;
     int castling;
@@ -79,18 +84,26 @@ typedef struct board {
     int ply;
 } Board;
 
+typedef struct line {
+    int length;
+    Move moves[MAX_DEPTH];
+} Line;
+
 typedef struct transposition {
     Bitboard hash;
     Move move;
-    int8_t score;
+    int16_t score;
+    uint8_t age;
     uint8_t depth;
-    uint8_t flags; // 6 bits ply, 2 bits node type
+    uint8_t flag;
+    bool pv_node;
 } Transposition;
 
-typedef struct line {
-    int length;
-    Move moves[MAX_PLY];
-} Line;
+// Global shared transposition table
+extern Transposition *transposition;
+extern int transposition_size;
+
+extern int game_ply;
 
 // clang-format off
 enum Square {
