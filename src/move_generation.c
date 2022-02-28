@@ -1,32 +1,10 @@
 #include "move_generation.h"
 #include "attacks.h"
-#include "bitboard.h"
 #include "move.h"
 
 static void generate_pawn_moves(const Board *board, Move *moves, int *count);
 static void generate_piece_moves(const Board *board, Move *moves, int *count,
                                  int piece);
-
-// Print move with start square, end square, and special flags
-void print_move(Move move) {
-    static const char *promotion[4] = {"knight", "bishop", "rook", "queen"};
-    printf("%s%s", get_coordinates(get_move_start(move)),
-           get_coordinates(get_move_end(move)));
-    switch (get_move_flag(move)) {
-    case PROMOTION:
-        printf(" promotion %s\n", promotion[get_move_promotion(move)]);
-        break;
-    case ENPASSANT:
-        printf(" enpassant\n");
-        break;
-    case CASTLING:
-        printf(" castle\n");
-        break;
-    default:
-        printf("\n");
-        break;
-    }
-}
 
 // Generate pseudo legal moves
 int generate_moves(const Board *board, Move *moves) {

@@ -97,7 +97,7 @@ static Bitboard init_pawn_attacks(int square, int player) {
     }
 }
 
-// Initialize knight attack looukup table
+// Initialize knight attack lookup table
 static Bitboard init_knight_attacks(int square) {
     static const Bitboard MASK_FILE_AB = UINT64_C(0xFCFCFCFCFCFCFCFC);
     static const Bitboard MASK_FILE_HG = UINT64_C(0x3F3F3F3F3F3F3F3F);

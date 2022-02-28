@@ -33,11 +33,18 @@
 #define ENPASSANT 2
 #define CASTLING 3
 
-// Debug macro only appears if DEBUG is passed in
+// Debug flag
 #ifdef DEBUG
 #define DEBUG_FLAG true
 #else
 #define DEBUG_FLAG false
+#endif
+
+// Log flag
+#ifdef LOG
+#define LOG_FLAG true
+#else
+#define LOG_FLAG false
 #endif
 
 // Prints debug information
@@ -59,12 +66,13 @@
     11 00 000000 000000    promotion piece
 
     Special flags: promotion = 1, enpassant = 2, castling = 3
+
+    For castling moves, start square is the king and end square is the rook
 */
 typedef uint16_t Move;
 
 // each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
-
 typedef uint64_t U64;
 
 typedef struct state {
@@ -158,6 +166,23 @@ enum Result {
     DRAW
 };
 // clang-format on
+
+// Get string coordinates from square
+static inline char *get_coordinates(int square) {
+    // clang-format off
+    static char coordinates[64][3] = {
+        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+        "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+        "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+        "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+        "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+        "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+        "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+        "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
+    };
+    // clang-format on
+    return coordinates[square];
+}
 
 // Move and piece functions
 
