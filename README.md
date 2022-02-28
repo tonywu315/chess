@@ -1,6 +1,6 @@
 # Chess Engine
 
-This is a simple chess engine written in C. The engine uses a [0x88](https://en.wikipedia.org/wiki/0x88) chess board representation and searches the game tree with [alpha-beta pruning](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning). 
+This is a chess engine written in C. The engine uses a [bitboard](https://www.chessprogramming.org/Bitboards) chess board representation and searches the game tree with [alpha-beta pruning](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning). 
 
 ## Installation
 
@@ -20,14 +20,10 @@ This is a simple chess engine written in C. The engine uses a [0x88](https://en.
 
 - Tranposition table
 - Iterative deepening
-- Aspiration windows
 - Quiescence Search
-- Null move pruning
 - Move ordering
 - Opening book and endgame tablebase
-- Improve evaluation
+- Machine learning for evaluation
 - Implement Universal Chess Interface
 - Create a simple GUI
-- Switch to bitboard representation
 - Multithreading
-- Create neural network for evaluation

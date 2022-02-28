@@ -75,7 +75,7 @@ static void start_game(Board *board, bool mode, int player, int time) {
 
 // Parse player move and returns move
 static int get_move(Board *board, Move *move, bool mode) {
-    char input[5] = {0};
+    char input[6] = {0};
     int start_file, start_rank, end_file, end_rank, promotion = NO_PIECE_TYPE;
 
     printf("Move: ");
