@@ -18,12 +18,10 @@ This is a chess engine written in C. The engine uses a [bitboard](https://www.ch
 
 ## TODO
 
-- Tranposition table
-- Iterative deepening
 - Quiescence Search
 - Move ordering
 - Opening book and endgame tablebase
-- Machine learning for evaluation
 - Implement Universal Chess Interface
 - Create a simple GUI
 - Multithreading
+- Machine learning for evaluation

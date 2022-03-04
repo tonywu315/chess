@@ -13,14 +13,16 @@
 #include <time.h>
 #include <unistd.h>
 
-#define VERSION "2.0"
+#define VERSION "2.1"
 
-#define MAX_PLY 64
-#define MAX_DEPTH 99
+#define MAX_DEPTH 64
 #define MAX_MOVES 1024
 #define ARRAY_SIZE 128
 #define SUCCESS 0
 #define FAILURE 1
+
+#define INFINITY 30000
+#define INVALID_SCORE 32767
 
 #define CASTLE_WK 1
 #define CASTLE_WQ 2
@@ -31,11 +33,18 @@
 #define ENPASSANT 2
 #define CASTLING 3
 
-// Debug macro only appears if DEBUG is passed in
+// Debug flag
 #ifdef DEBUG
 #define DEBUG_FLAG true
 #else
 #define DEBUG_FLAG false
+#endif
+
+// Log flag
+#ifdef LOG
+#define LOG_FLAG true
+#else
+#define LOG_FLAG false
 #endif
 
 // Prints debug information
@@ -57,11 +66,14 @@
     11 00 000000 000000    promotion piece
 
     Special flags: promotion = 1, enpassant = 2, castling = 3
+
+    For castling moves, start square is the king and end square is the rook
 */
 typedef uint16_t Move;
 
 // each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
+typedef uint64_t U64;
 
 typedef struct state {
     int capture;
@@ -72,6 +84,7 @@ typedef struct state {
 
 typedef struct board {
     State state[MAX_MOVES];
+    Bitboard hash;
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
@@ -81,8 +94,24 @@ typedef struct board {
 
 typedef struct line {
     int length;
-    Move moves[MAX_PLY];
+    Move moves[MAX_DEPTH];
 } Line;
+
+typedef struct transposition {
+    Bitboard hash;
+    Move move;
+    int16_t score;
+    uint8_t age;
+    uint8_t depth;
+    uint8_t flag;
+    bool pv_node;
+} Transposition;
+
+// Global shared transposition table
+extern Transposition *transposition;
+extern int transposition_size;
+
+extern int game_ply;
 
 // clang-format off
 enum Square {
@@ -137,6 +166,30 @@ enum Result {
     DRAW
 };
 // clang-format on
+
+// Get string coordinates from square
+static inline char *get_coordinates(int square) {
+    // clang-format off
+    static char coordinates[64][3] = {
+        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+        "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+        "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+        "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+        "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+        "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+        "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+        "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
+    };
+    // clang-format on
+    return coordinates[square];
+}
+
+// Mate functions
+
+static inline bool is_mate_score(int score) { return abs(score) >= INFINITY - 100; }
+static inline int score_to_mate(int score) {
+    return (INFINITY - abs(score)) / 2;
+}
 
 // Move and piece functions
 
@@ -197,6 +250,17 @@ static inline bool in_bounds(int start, int direction) {
 
 static inline bool valid_row(int row) { return row >= 0 && row <= 7; }
 static inline int make_square(int file, int rank) { return file + (rank << 3); }
+
+// Pseudo random number generator
+static inline Bitboard rand64() {
+    // Fastest seed out of 10 billion starting seeds for magic number generation
+    static Bitboard seed = UINT64_C(0xAE793F42471A8799);
+
+    seed ^= seed >> 12;
+    seed ^= seed << 25;
+    seed ^= seed >> 27;
+    return seed * UINT64_C(0x2545F4914F6CDD1D);
+}
 
 // GCC/Clang compatible compiler
 #if defined(__GNUC__)

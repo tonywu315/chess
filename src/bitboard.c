@@ -1,19 +1,23 @@
 #include "bitboard.h"
 #include "move.h"
 #include "move_generation.h"
+#include "transposition.h"
 
 // Initialize board struct to create an empty board
 void init_board(Board *board) {
     State state = {NO_PIECE, 15, NO_SQUARE, 0};
 
-    board->state[0] = state;
+    memset(board->state, 0, sizeof(board->state));
     memset(board->pieces, 0, sizeof(board->pieces));
     memset(board->occupancies, 0, sizeof(board->occupancies));
+
+    board->state[0] = state;
 
     for (int square = A1; square <= H8; square++) {
         board->board[square] = NO_PIECE;
     }
 
+    board->hash = 0;
     board->player = WHITE;
     board->ply = 0;
 }
@@ -22,10 +26,11 @@ void init_board(Board *board) {
 void start_board(Board *board) {
     init_board(board);
     load_fen(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    board->hash = get_hash(board);
 }
 
 // Print the chess board
-void print_board(const Board *board, int score) {
+void print_board(const Board *board, int score, bool game_over) {
     const char pieces[] = {
         [W_PAWN] = 'P',   [W_KNIGHT] = 'N', [W_BISHOP] = 'B', [W_ROOK] = 'R',
         [W_QUEEN] = 'Q',  [W_KING] = 'K',   [B_PAWN] = 'p',   [B_KNIGHT] = 'n',
@@ -55,10 +60,10 @@ void print_board(const Board *board, int score) {
     }
 
     // Print score unless end of game
-    if (score != INT_MAX) {
+    if (!game_over) {
         // Prints mate in x if detected
-        if (abs(score) >= INT_MAX - 100) {
-            printf("Mate in %d\n", (INT_MAX - abs(score)) / 2);
+        if (is_mate_score(score)) {
+            printf("Mate in %d\n", score_to_mate(score));
         } else {
             printf("Evaluation: %d\n", score);
         }
@@ -71,7 +76,8 @@ void print_board(const Board *board, int score) {
     // Print extra information for debugging
     if (DEBUG_FLAG) {
         State state = board->state[board->ply];
-        printf("\nCastling: %c%c%c%c\n", state.castling & CASTLE_WK ? 'K' : '-',
+        printf("\nScore: %d\n", score);
+        printf("Castling: %c%c%c%c\n", state.castling & CASTLE_WK ? 'K' : '-',
                state.castling & CASTLE_WQ ? 'Q' : '-',
                state.castling & CASTLE_BK ? 'k' : '-',
                state.castling & CASTLE_BQ ? 'q' : '-');
@@ -171,21 +177,6 @@ void load_fen(Board *board, const char *fen) {
         board->occupancies[1] |= board->pieces[piece + 8];
     }
     board->occupancies[2] = board->occupancies[0] | board->occupancies[1];
-}
 
-// Get string coordinates from square
-char *get_coordinates(int square) {
-    // clang-format off
-    static char coordinates[64][3] = {
-        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
-        "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
-        "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
-        "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
-        "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
-        "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
-        "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
-        "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
-    };
-    // clang-format on
-    return coordinates[square];
+    board->hash = get_hash(board);
 }

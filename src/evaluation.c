@@ -141,6 +141,6 @@ int eval(const Board *board) {
     // Calculate weighted score based on game phase
     int score = (middle_score * phase + end_score * (24 - phase)) / 24;
 
-    // Flip score for black
+    // Return objective score
     return board->player == WHITE ? score : -score;
 }

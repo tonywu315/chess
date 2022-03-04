@@ -5,11 +5,9 @@ project(chess C)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-set(CMAKE_C_FLAGS "-O3 -march=native")
+set(CMAKE_C_FLAGS " -pthread -O3 -march=native")
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED True)
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
 find_package(Threads REQUIRED)
 
@@ -23,12 +21,15 @@ set(SOURCES
     src/move_generation.c
     src/move.c
     src/search.c
+    src/transposition.c
 )
 
 # Create executable file
 add_executable(chess.out ${SOURCES} src/main.c)
 target_include_directories(chess.out PRIVATE include)
-target_link_libraries(chess.out Threads::Threads)
+
+# Add preprocessor macros
+# target_compile_definitions(chess.out PRIVATE LOG)
 
 # Chess library file for tests
 add_library(chesslib ${SOURCES})
