@@ -16,7 +16,7 @@ void init_transposition(int megabytes) {
 
     // Check that size is a power of 2
     if ((megabytes & (megabytes - 1)) != 0) {
-        fprintf(stderr, "Error: transposition table size must be power of 2");
+        fprintf(stderr, "Error: transposition table size must be power of 2\n");
         exit(1);
     }
 
@@ -24,13 +24,14 @@ void init_transposition(int megabytes) {
 
     // Free memory if it is already allocated, shouldn't happen
     if (transposition != NULL) {
+        fprintf(stderr, "Error: init_transposition called twice\n");
         free(transposition);
     }
 
     // Dynamically allocate transposition array
-    transposition = malloc(transposition_size * sizeof(Transposition));
+    transposition = calloc(transposition_size, sizeof(Transposition));
     if (transposition == NULL) {
-        fprintf(stderr, "Error: transposition table failed to allocate");
+        fprintf(stderr, "Error: transposition table failed to allocate\n");
         exit(1);
     }
 }
@@ -41,21 +42,27 @@ void clear_transposition() {
 }
 
 // Check transposition table to see if position has already been searched
-int get_transposition(U64 hash, int depth, int alpha, int beta, Move *move) {
+int get_transposition(U64 hash, int alpha, int beta, int ply, int depth,
+                      Move *move) {
     Transposition *entry = &transposition[hash & (transposition_size - 1)];
 
     if (entry->hash == hash) {
         *move = entry->move;
 
-        // if (entry->depth >= depth) {
-        if (entry->depth == depth) {
-            if (entry->flag == TRANSPOSITION_EXACT) {
-                return entry->score;
+        if (entry->depth >= depth) {
+            // Adjust mate score based off of the root node
+            int score = entry->score;
+            if (is_mate_score(score)) {
+                score += (score > 0) ? -ply : ply;
             }
-            if (entry->flag == TRANSPOSITION_ALPHA && entry->score <= alpha) {
+
+            if (entry->flag == EXACT_BOUND) {
+                return score;
+            }
+            if (entry->flag == UPPER_BOUND && score <= alpha) {
                 return alpha;
             }
-            if (entry->flag == TRANSPOSITION_BETA && entry->score >= beta) {
+            if (entry->flag == LOWER_BOUND && score >= beta) {
                 return beta;
             }
         }
@@ -65,15 +72,17 @@ int get_transposition(U64 hash, int depth, int alpha, int beta, Move *move) {
 }
 
 // Save position and score to transposition table
-void set_transposition(U64 hash, int depth, int score, int flag, Move move) {
+void set_transposition(U64 hash, int score, int flag, int ply, int depth,
+                       Move move) {
     Transposition *entry = &transposition[hash & (transposition_size - 1)];
 
-    // if (DEBUG_FLAG && entry->hash == hash) {
-    //     debug_printf("%s\n", "Hash collision");
-    // }
+    // Adjust mate score based off of the root node
+    if (is_mate_score(score)) {
+        score += (score > 0) ? ply : -ply;
+    }
 
-    // Only replace if the entry is old, low depth, or empty
-    if (entry->age + 10 < game_ply || entry->depth < depth || !entry->depth) {
+    // Replace entry if entry is different or lower depth
+    if (entry->hash != hash || entry->depth <= depth) {
         entry->hash = hash;
         entry->move = move;
         entry->score = score;

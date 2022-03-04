@@ -7,9 +7,11 @@
 void init_board(Board *board) {
     State state = {NO_PIECE, 15, NO_SQUARE, 0};
 
-    board->state[0] = state;
+    memset(board->state, 0, sizeof(board->state));
     memset(board->pieces, 0, sizeof(board->pieces));
     memset(board->occupancies, 0, sizeof(board->occupancies));
+
+    board->state[0] = state;
 
     for (int square = A1; square <= H8; square++) {
         board->board[square] = NO_PIECE;
@@ -28,7 +30,7 @@ void start_board(Board *board) {
 }
 
 // Print the chess board
-void print_board(const Board *board, int score) {
+void print_board(const Board *board, int score, bool game_over) {
     const char pieces[] = {
         [W_PAWN] = 'P',   [W_KNIGHT] = 'N', [W_BISHOP] = 'B', [W_ROOK] = 'R',
         [W_QUEEN] = 'Q',  [W_KING] = 'K',   [B_PAWN] = 'p',   [B_KNIGHT] = 'n',
@@ -58,10 +60,10 @@ void print_board(const Board *board, int score) {
     }
 
     // Print score unless end of game
-    if (abs(score) != INFINITY) {
+    if (!game_over) {
         // Prints mate in x if detected
-        if (abs(score) >= INFINITY - 100) {
-            printf("Mate in %d\n", (INFINITY - abs(score)) / 2);
+        if (is_mate_score(score)) {
+            printf("Mate in %d\n", score_to_mate(score));
         } else {
             printf("Evaluation: %d\n", score);
         }

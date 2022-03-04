@@ -6,13 +6,15 @@
 #include "move_generation.h"
 
 /*
-    CURRENT PERFORMANCE FOR DEPTH 6
-    perft:           61.145 MNPS
+    Benchmark for depth 6 with transposition table removed
+    perft:           64.488 MNPS
     make_unmake:     115.302 MNPS
 
     Bulk counting:
     speedy_perft:    354.398 MNPS
     pseudo_perft:    370.105 MNPS
+
+    
 */
 
 static inline void speedy_perft(Board *board, int depth, U64 *nodes);
@@ -28,8 +30,8 @@ void benchmark(Board *board, int depth) {
     begin_time = clock();
     perft(board, depth, &nodes);
     end_time = clock();
-    time = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
 
+    time = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
     printf("Depth %d, Nodes: %"PRId64"\n", depth, nodes);
     printf("Time: %lf seconds, MNPS: %.3f\n", time, nodes / (time * 1000000));
 }

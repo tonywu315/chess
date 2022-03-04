@@ -5,15 +5,13 @@
 #include "game.h"
 #include "transposition.h"
 
-#include "move.h"
-
 int main(int argc, char **argv) {
     Board board;
     int seconds = 10;
 
     init_attacks();
     init_evaluation();
-    init_transposition(256);
+    init_transposition(512);
 
     start_board(&board);
 
@@ -25,7 +23,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    start_singleplayer(&board, WHITE, seconds);
+    start_singleplayer(&board, true, seconds);
 
     if (transposition) {
         free(transposition);
