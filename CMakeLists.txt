@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.16.3)
 
 project(chess C)
 
@@ -20,6 +20,7 @@ set(SOURCES
     src/game.c
     src/move_generation.c
     src/move.c
+    src/quiescence.c
     src/search.c
     src/transposition.c
 )

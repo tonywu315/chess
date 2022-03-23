@@ -2,9 +2,12 @@
 #include "attacks.h"
 #include "move.h"
 
-static void generate_pawn_moves(const Board *board, Move *moves, int *count);
-static void generate_piece_moves(const Board *board, Move *moves, int *count,
-                                 int piece);
+static inline void generate_piece_moves(const Board *board, Move *moves,
+                                        int *count, int piece, bool capture);
+static inline void generate_pawn_moves(const Board *board, Move *moves,
+                                       int *count);
+static inline void generate_pawn_captures(const Board *board, Move *moves,
+                                          int *count);
 
 // Generate pseudo legal moves
 int generate_moves(const Board *board, Move *moves) {
@@ -12,11 +15,11 @@ int generate_moves(const Board *board, Move *moves) {
 
     // Generate moves for each piece type
     generate_pawn_moves(board, moves, &count);
-    generate_piece_moves(board, moves, &count, KNIGHT);
-    generate_piece_moves(board, moves, &count, BISHOP);
-    generate_piece_moves(board, moves, &count, ROOK);
-    generate_piece_moves(board, moves, &count, QUEEN);
-    generate_piece_moves(board, moves, &count, KING);
+    generate_piece_moves(board, moves, &count, KNIGHT, false);
+    generate_piece_moves(board, moves, &count, BISHOP, false);
+    generate_piece_moves(board, moves, &count, ROOK, false);
+    generate_piece_moves(board, moves, &count, QUEEN, false);
+    generate_piece_moves(board, moves, &count, KING, false);
 
     // Generate castling moves if they are legal
     int castling = board->state[board->ply].castling;
@@ -61,6 +64,20 @@ int generate_moves(const Board *board, Move *moves) {
     return count;
 }
 
+// Generate capture moves and queen promotions
+int generate_quiescence_moves(const Board *board, Move *moves) {
+    int count = 0;
+
+    generate_pawn_captures(board, moves, &count);
+    generate_piece_moves(board, moves, &count, KNIGHT, true);
+    generate_piece_moves(board, moves, &count, BISHOP, true);
+    generate_piece_moves(board, moves, &count, ROOK, true);
+    generate_piece_moves(board, moves, &count, QUEEN, true);
+    generate_piece_moves(board, moves, &count, KING, true);
+
+    return count;
+}
+
 // Generate only legal moves
 int generate_legal_moves(Board *board, Move *moves) {
     Move pseudo_moves[MAX_MOVES];
@@ -78,15 +95,18 @@ int generate_legal_moves(Board *board, Move *moves) {
 }
 
 // Generate all moves for a piece type
-static inline void generate_piece_moves(const Board *board, Move *moves, int *count,
-                                 int piece) {
+static inline void generate_piece_moves(const Board *board, Move *moves,
+                                        int *count, int piece, bool capture) {
     Bitboard pieces = board->pieces[make_piece(piece, board->player)];
 
     // Iterate over each square in the piece bitboard
     while (pieces) {
         int start = pop_lsb(&pieces);
 
-        Bitboard attacks = get_attacks(board, start, piece);
+        // Get only captures or all moves
+        Bitboard attacks = capture ? get_attacks(board, start, piece) &
+                                         board->occupancies[!board->player]
+                                   : get_attacks(board, start, piece);
         while (attacks) {
             moves[(*count)++] = encode_move(start, pop_lsb(&attacks), 0, 0);
         }
@@ -94,7 +114,8 @@ static inline void generate_piece_moves(const Board *board, Move *moves, int *co
 }
 
 // Generate all pawn moves
-static inline void generate_pawn_moves(const Board *board, Move *moves, int *count) {
+static inline void generate_pawn_moves(const Board *board, Move *moves,
+                                       int *count) {
     int piece = make_piece(PAWN, board->player);
     int up = UP, upleft = UPLEFT, upright = UPRIGHT;
     Bitboard rank3 = UINT64_C(0xFF0000), rank7 = UINT64_C(0xFF000000000000);
@@ -124,21 +145,21 @@ static inline void generate_pawn_moves(const Board *board, Move *moves, int *cou
 
         while (left) {
             int end = pop_lsb(&left);
-            for (int i = KNIGHT; i <= QUEEN; i++) {
+            for (int i = QUEEN; i >= KNIGHT; i--) {
                 moves[(*count)++] =
                     encode_move(end - upleft, end, PROMOTION, i);
             }
         }
         while (right) {
             int end = pop_lsb(&right);
-            for (int i = KNIGHT; i <= QUEEN; i++) {
+            for (int i = QUEEN; i >= KNIGHT; i--) {
                 moves[(*count)++] =
                     encode_move(end - upright, end, PROMOTION, i);
             }
         }
         while (middle) {
             int end = pop_lsb(&middle);
-            for (int i = KNIGHT; i <= QUEEN; i++) {
+            for (int i = QUEEN; i >= KNIGHT; i--) {
                 moves[(*count)++] = encode_move(end - up, end, PROMOTION, i);
             }
         }
@@ -172,6 +193,59 @@ static inline void generate_pawn_moves(const Board *board, Move *moves, int *cou
         }
         if ((ep & 7) != 0 && board->board[ep - upright] == piece) {
             moves[(*count)++] = encode_move(ep - upright, ep, ENPASSANT, 0);
+        }
+    }
+}
+
+// Generate all pawn captures and queen promotions
+static inline void generate_pawn_captures(const Board *board, Move *moves,
+                                          int *count) {
+    int piece = make_piece(PAWN, board->player);
+    int up = UP, upleft = UPLEFT, upright = UPRIGHT;
+    Bitboard rank7 = UINT64_C(0xFF000000000000);
+
+    // Flip direction if player is black
+    if (board->player == BLACK) {
+        rank7 = UINT64_C(0xFF00);
+        up = DOWN;
+        upleft = DOWNLEFT;
+        upright = DOWNRIGHT;
+    }
+
+    Bitboard pawns = board->pieces[piece] & ~rank7;
+    Bitboard empty = ~board->occupancies[2];
+    Bitboard seventh_pawns = board->pieces[piece] & rank7;
+
+    // Queen promotion moves
+    if (seventh_pawns) {
+        Bitboard enemies = board->occupancies[!board->player];
+        Bitboard left = shift_bit(seventh_pawns, upleft) & enemies;
+        Bitboard right = shift_bit(seventh_pawns, upright) & enemies;
+        Bitboard middle = shift_bit(seventh_pawns, up) & empty;
+
+        while (left) {
+            int end = pop_lsb(&left);
+            moves[(*count)++] =
+                encode_move(end - upleft, end, PROMOTION, QUEEN);
+        }
+        while (right) {
+            int end = pop_lsb(&right);
+            moves[(*count)++] =
+                encode_move(end - upright, end, PROMOTION, QUEEN);
+        }
+        while (middle) {
+            int end = pop_lsb(&middle);
+            moves[(*count)++] = encode_move(end - up, end, PROMOTION, QUEEN);
+        }
+    }
+
+    // Pawn attacks
+    while (pawns) {
+        int start = pop_lsb(&pawns);
+
+        Bitboard attacks = get_attacks(board, start, PAWN);
+        while (attacks) {
+            moves[(*count)++] = encode_move(start, pop_lsb(&attacks), 0, 0);
         }
     }
 }

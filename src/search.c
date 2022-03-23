@@ -3,10 +3,11 @@
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
+#include "quiescence.h"
 #include "transposition.h"
 
 U64 nodes_searched;
-static int time_over;
+bool time_over;
 
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
@@ -101,16 +102,10 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // TODO: add quiescence search
     if (depth == 0) {
         mainline->length = 0;
-
-        if (LOG_FLAG) {
-            nodes_searched++;
-        }
-
-        return eval(board);
+        return quiescence_search(board, alpha, beta);
     }
 
     // Check if position is in transposition table
-
     if (ply) {
         Move tt_move;
         score =
@@ -137,7 +132,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
         moves_count++;
 
-        // Calculate score of opponent
+        // Recursively search game tree
         score = -search(board, -beta, -alpha, ply + 1, depth - 1, &line);
         unmake_move(board, moves[i]);
 
