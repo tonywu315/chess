@@ -112,6 +112,8 @@ extern Transposition *transposition;
 extern int transposition_size;
 
 extern int game_ply;
+extern U64 nodes_searched;
+extern bool time_over;
 
 // clang-format off
 enum Square {
