@@ -13,7 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define VERSION "2.1"
+#define VERSION "2.2"
 
 #define MAX_DEPTH 64
 #define MAX_MOVES 1024
