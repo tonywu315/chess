@@ -30,7 +30,7 @@ add_executable(chess.out ${SOURCES} src/main.c)
 target_include_directories(chess.out PRIVATE include)
 
 # Add preprocessor macros
-# target_compile_definitions(chess.out PRIVATE LOG)
+target_compile_definitions(chess.out PRIVATE LOG)
 
 # Chess library file for tests
 add_library(chesslib ${SOURCES})
