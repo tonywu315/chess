@@ -6,7 +6,7 @@
 // Continue limited search until a quiet position is reached
 int quiescence_search(Board *board, int alpha, int beta) {
     if (LOG_FLAG) {
-        nodes_searched++;
+        qnodes++;
     }
 
     int score = eval(board);

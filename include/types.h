@@ -16,8 +16,8 @@
 #define VERSION "2.2"
 
 #define MAX_DEPTH 64
-#define MAX_MOVES 1024
-#define ARRAY_SIZE 128
+#define MAX_MOVES 256
+#define MAX_GAME_LENGTH 1024
 #define SUCCESS 0
 #define FAILURE 1
 
@@ -29,6 +29,7 @@
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
+#define NULLMOVE 0
 #define PROMOTION 1
 #define ENPASSANT 2
 #define CASTLING 3
@@ -82,9 +83,11 @@ typedef struct state {
     int draw_ply;
 } State;
 
+extern int collisions;
+
 typedef struct board {
-    State state[MAX_MOVES];
-    Bitboard hash;
+    State state[MAX_GAME_LENGTH];
+    U64 hash;
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
@@ -109,10 +112,10 @@ typedef struct transposition {
 
 // Global shared transposition table
 extern Transposition *transposition;
-extern int transposition_size;
+extern U64 transposition_size;
 
 extern int game_ply;
-extern U64 nodes_searched;
+extern U64 qnodes;
 extern bool time_over;
 
 // clang-format off
@@ -188,7 +191,9 @@ static inline char *get_coordinates(int square) {
 
 // Mate functions
 
-static inline bool is_mate_score(int score) { return abs(score) >= INFINITY - 100; }
+static inline bool is_mate_score(int score) {
+    return abs(score) >= INFINITY - 100;
+}
 static inline int score_to_mate(int score) {
     return (INFINITY - abs(score)) / 2;
 }

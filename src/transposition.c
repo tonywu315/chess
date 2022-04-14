@@ -6,7 +6,7 @@ U64 enpassant_key[64 + 1];
 U64 side_key;
 
 Transposition *transposition = NULL;
-int transposition_size = 0;
+U64 transposition_size = 0;
 
 static inline void init_hash_keys();
 
@@ -20,7 +20,8 @@ void init_transposition(int megabytes) {
         exit(1);
     }
 
-    transposition_size = megabytes * 0x100000 / sizeof(Transposition);
+    transposition_size =
+        (U64)megabytes * UINT64_C(0x100000) / sizeof(Transposition);
 
     // Free memory if it is already allocated, shouldn't happen
     if (transposition != NULL) {

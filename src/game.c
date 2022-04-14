@@ -5,7 +5,7 @@
 #include "move_generation.h"
 #include "search.h"
 
-static Move game_moves[MAX_MOVES];
+static Move game_moves[MAX_GAME_LENGTH];
 int game_ply = 0;
 
 static void start_game(Board *board, bool single, bool player_first, int time);
