@@ -48,6 +48,13 @@
 #define LOG_FLAG false
 #endif
 
+// Run code if log flag is on
+#define log_run(code)                                                          \
+    do {                                                                       \
+        if (LOG_FLAG)                                                          \
+            code;                                                              \
+    } while (0)
+
 // Prints debug information
 #define debug_printf(fmt, ...)                                                 \
     do {                                                                       \
@@ -192,8 +199,9 @@ static inline char *get_coordinates(int square) {
 // Mate functions
 
 static inline bool is_mate_score(int score) {
-    return abs(score) >= INFINITY - 100;
+    return abs(score) >= INFINITY - 128;
 }
+
 static inline int score_to_mate(int score) {
     return (INFINITY - abs(score)) / 2;
 }

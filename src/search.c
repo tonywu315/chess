@@ -6,6 +6,8 @@
 #include "quiescence.h"
 #include "transposition.h"
 
+#include <stdio.h>
+
 U64 nodes;
 U64 hnodes;
 U64 qnodes;
@@ -22,23 +24,23 @@ int previous_score = 0;
 // Search position for best move within time limit
 int search_position(Board *board, Move *move, int time) {
     pthread_t tid;
-    clock_t begin_time, start_time = clock();
+    clock_t depth_time, start_time = clock();
     Line mainline = {0, {0}};
-    Move final_move = {0};
-    int final_score = 0, score = 0;
+    Move best_move = 0;
+    int best_score = 0, score = 0;
     int alpha = -INFINITY, beta = INFINITY;
 
     Move moves[MAX_MOVES];
     int move_count = generate_legal_moves(board, moves);
 
+    // Start timer
     time_over = false;
-
     pthread_create(&tid, NULL, chess_clock, (void *)&time);
 
     // Iterative deepening
     for (int depth = 1;; depth++) {
         if (LOG_FLAG) {
-            begin_time = clock();
+            depth_time = clock();
             nodes = 0;
             hnodes = 0;
             qnodes = 0;
@@ -52,12 +54,13 @@ int search_position(Board *board, Move *move, int time) {
             break;
         }
 
-        final_move = mainline.moves[0];
-        final_score = score;
+        best_move = mainline.moves[0];
+        best_score = score;
 
         if (LOG_FLAG) {
-            double time_taken = (double)(clock() - begin_time) / CLOCKS_PER_SEC;
-            double total_time = (double)(clock() - start_time) / CLOCKS_PER_SEC;
+            clock_t now = clock();
+            double time_taken = (double)(now - depth_time) / CLOCKS_PER_SEC;
+            double total_time = (double)(now - start_time) / CLOCKS_PER_SEC;
             printf("\nDepth: %d\n", depth);
             printf("Nodes searched: %" PRId64 "\n", nodes + qnodes);
             printf(" - Interior nodes:  %" PRId64 "\n", nodes);
@@ -66,34 +69,27 @@ int search_position(Board *board, Move *move, int time) {
             printf("TTNodes searched: %" PRId64 " (%.2lf%%)\n", ttnodes,
                    100 * (double)ttnodes / (double)nodes);
             printf("Best move: %s%s\n",
-                   get_coordinates(get_move_start(final_move)),
-                   get_coordinates(get_move_end(final_move)));
-            printf("Evaluation: %d\n",
-                   board->player == WHITE ? final_score : -final_score);
+                   get_coordinates(get_move_start(best_move)),
+                   get_coordinates(get_move_end(best_move)));
+            printf("Evaluation: %d\n", board->player == WHITE ? score : -score);
             printf("Time: %lf seconds, KNPS: %.3f\n", time_taken,
                    (double)(nodes + qnodes) / (time_taken * 1000));
             printf("Total time: %lf seconds\n", total_time);
         }
 
-        // Stop searching if there is only one legal move or mate is found
-
-        // Does not necessarily find the fastest mate
-        // TODO: remove later
-        if ((is_mate_score(score) && abs(score) >= abs(previous_score) + 2) ||
-            (move_count == 1) || depth == MAX_DEPTH) {
+        // Stop searching if there is 1 legal move or max depth is reached
+        if ((move_count == 1) || depth == MAX_DEPTH) {
             pthread_cancel(tid);
             break;
         }
     }
 
+    // Free resources
     pthread_join(tid, NULL);
 
-    // TODO: remove later
-    previous_score = final_score;
-
-    // Set move to mainline and return objective score
-    *move = final_move;
-    return board->player == WHITE ? final_score : -final_score;
+    // Set move to mainline and return score
+    *move = best_move;
+    return board->player == WHITE ? best_score : -best_score;
 }
 
 // Alpha beta algorithm
@@ -113,15 +109,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // Quiescence search at leaf nodes
     if (depth == 0) {
         mainline->length = 0;
-        if (LOG_FLAG) {
-            hnodes++;
-        }
+        log_run(hnodes++;);
         return quiescence_search(board, alpha, beta);
     }
 
-    if (LOG_FLAG) {
-        nodes++;
-    }
+    log_run(nodes++);
 
     // Check if position is in transposition table
     if (ply) {
