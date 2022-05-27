@@ -100,6 +100,17 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     uint8_t tt_flag = UPPER_BOUND;
     int score;
 
+    // Mate distance pruning
+    if (alpha < -INFINITY + ply) {
+        alpha = -INFINITY + ply;
+    }
+    if (beta > INFINITY - ply - 1) {
+        beta = INFINITY - ply - 1;
+    }
+    if (ply && alpha >= beta) {
+        return alpha;
+    }
+
     // Check extension
     bool check = in_check(board, board->player);
     if (check) {
