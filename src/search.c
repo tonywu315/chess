@@ -6,8 +6,6 @@
 #include "quiescence.h"
 #include "transposition.h"
 
-#include <stdio.h>
-
 U64 nodes;
 U64 hnodes;
 U64 qnodes;
@@ -17,9 +15,6 @@ bool time_over;
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
 static void *chess_clock(void *time);
-
-// TODO: remove later, this is a patchy method to stop PV overwrite
-int previous_score = 0;
 
 // Search position for best move within time limit
 int search_position(Board *board, Move *move, int time) {
@@ -55,26 +50,33 @@ int search_position(Board *board, Move *move, int time) {
         }
 
         best_move = mainline.moves[0];
-        best_score = score;
+        best_score = board->player == WHITE ? score : -score;
 
         if (LOG_FLAG) {
             clock_t now = clock();
             double time_taken = (double)(now - depth_time) / CLOCKS_PER_SEC;
             double total_time = (double)(now - start_time) / CLOCKS_PER_SEC;
+
             printf("\nDepth: %d\n", depth);
-            printf("Nodes searched: %" PRId64 "\n", nodes + qnodes);
-            printf(" - Interior nodes:  %" PRId64 "\n", nodes);
-            printf(" - Horizon nodes:   %" PRId64 "\n", hnodes);
-            printf(" - Quiescent Nodes: %" PRId64 "\n", qnodes - hnodes);
-            printf("TTNodes searched: %" PRId64 " (%.2lf%%)\n", ttnodes,
-                   100 * (double)ttnodes / (double)nodes);
-            printf("Best move: %s%s\n",
-                   get_coordinates(get_move_start(best_move)),
-                   get_coordinates(get_move_end(best_move)));
-            printf("Evaluation: %d\n", board->player == WHITE ? score : -score);
-            printf("Time: %lf seconds, KNPS: %.3f\n", time_taken,
-                   (double)(nodes + qnodes) / (time_taken * 1000));
-            printf("Total time: %lf seconds\n", total_time);
+
+            printf("Evaluation: %d\n", best_score);
+            printf("Best moves:");
+            for (int i = 0; i < mainline.length; i++) {
+                printf(" %s%s",
+                       get_coordinates(get_move_start(mainline.moves[i])),
+                       get_coordinates(get_move_end(mainline.moves[i])));
+            }
+
+            printf("\nNodes: %" PRId64 "\n", nodes + qnodes);
+            printf(" - Interior:  %" PRId64 "\n", nodes);
+            printf(" - Horizon:   %" PRId64 "\n", hnodes);
+            printf(" - Quiescent: %" PRId64 "\n", qnodes - hnodes);
+            printf("TTNodes: %" PRId64 " (%.2lf%%)\n", ttnodes,
+                   100.0 * ttnodes / nodes);
+
+            printf("Time: %.3lf seconds, KNPS: %.0f\n", time_taken,
+                   (nodes + qnodes) / (time_taken * 1000));
+            printf("Total time: %.3lf seconds\n", total_time);
         }
 
         // Stop searching if there is 1 legal move or max depth is reached
@@ -89,7 +91,7 @@ int search_position(Board *board, Move *move, int time) {
 
     // Set move to mainline and return score
     *move = best_move;
-    return board->player == WHITE ? best_score : -best_score;
+    return best_score;
 }
 
 // Alpha beta algorithm
@@ -132,9 +134,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
             get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
         if (score != INVALID_SCORE) {
-            if (LOG_FLAG) {
-                ttnodes++;
-            }
+            log_run(ttnodes++);
 
             // Return score in non-pv nodes or on exact hash hits
             if (alpha + 1 >= beta || (score > alpha && score < beta)) {
@@ -166,11 +166,12 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
         // Alpha cutoff
         if (score > alpha) {
+            best_move = moves[i];
+
             // Update mainline
-            mainline->moves[0] = moves[i];
+            mainline->moves[0] = best_move;
             memcpy(mainline->moves + 1, line.moves, line.length * sizeof(Move));
             mainline->length = line.length + 1;
-            best_move = mainline->moves[0];
 
             // Beta cutoff
             if (score >= beta) {

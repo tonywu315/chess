@@ -90,8 +90,6 @@ typedef struct state {
     int draw_ply;
 } State;
 
-extern int collisions;
-
 typedef struct board {
     State state[MAX_GAME_LENGTH];
     U64 hash;
