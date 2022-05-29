@@ -19,6 +19,7 @@ set(SOURCES
     src/evaluation.c
     src/game.c
     src/move_generation.c
+    src/move_order.c
     src/move.c
     src/quiescence.c
     src/search.c
@@ -28,6 +29,7 @@ set(SOURCES
 # Create executable file
 add_executable(chess.out ${SOURCES} src/main.c)
 target_include_directories(chess.out PRIVATE include)
+target_link_libraries(chess.out PRIVATE m)
 
 # Add preprocessor macros
 target_compile_definitions(chess.out PRIVATE LOG)

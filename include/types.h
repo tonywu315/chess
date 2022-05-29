@@ -3,7 +3,6 @@
 
 #include <ctype.h>
 #include <inttypes.h>
-#include <limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,6 +11,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <math.h>
+#ifdef INFINITY
+#undef INFINITY
+#endif
 
 #define VERSION "2.2"
 
@@ -48,11 +52,11 @@
 #define LOG_FLAG false
 #endif
 
-// Run code if log flag is on
-#define log_run(code)                                                          \
+// Increment if log flag is on
+#define log_increment(x)                                                       \
     do {                                                                       \
         if (LOG_FLAG)                                                          \
-            code;                                                              \
+            ++(x);                                                             \
     } while (0)
 
 // Prints debug information

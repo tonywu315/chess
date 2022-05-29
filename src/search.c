@@ -6,11 +6,11 @@
 #include "quiescence.h"
 #include "transposition.h"
 
-U64 nodes;
-U64 hnodes;
-U64 qnodes;
-U64 ttnodes;
 bool time_over;
+
+// Variables used for logging
+clock_t depth_time, start_time, end_time;
+U64 nodes, hnodes, qnodes, ttnodes, final_nodes;
 
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
@@ -19,7 +19,6 @@ static void *chess_clock(void *time);
 // Search position for best move within time limit
 int search_position(Board *board, Move *move, int time) {
     pthread_t tid;
-    clock_t depth_time, start_time = clock();
     Line mainline = {0, {0}};
     Move best_move = 0;
     int best_score = 0, score = 0;
@@ -32,8 +31,13 @@ int search_position(Board *board, Move *move, int time) {
     time_over = false;
     pthread_create(&tid, NULL, chess_clock, (void *)&time);
 
+    if (LOG_FLAG) {
+        start_time = clock();
+    }
+
     // Iterative deepening
-    for (int depth = 1;; depth++) {
+    int depth;
+    for (depth = 1;; depth++) {
         if (LOG_FLAG) {
             depth_time = clock();
             nodes = 0;
@@ -46,6 +50,7 @@ int search_position(Board *board, Move *move, int time) {
 
         // Stop searching if time is over and discard unfinished score
         if (time_over) {
+            depth--;
             break;
         }
 
@@ -53,9 +58,10 @@ int search_position(Board *board, Move *move, int time) {
         best_score = board->player == WHITE ? score : -score;
 
         if (LOG_FLAG) {
-            clock_t now = clock();
-            double time_taken = (double)(now - depth_time) / CLOCKS_PER_SEC;
-            double total_time = (double)(now - start_time) / CLOCKS_PER_SEC;
+            final_nodes = hnodes;
+            end_time = clock();
+            double time_taken =
+                (double)(end_time - depth_time) / CLOCKS_PER_SEC;
 
             printf("\nDepth: %d\n", depth);
 
@@ -73,10 +79,8 @@ int search_position(Board *board, Move *move, int time) {
             printf(" - Quiescent: %" PRId64 "\n", qnodes - hnodes);
             printf("TTNodes: %" PRId64 " (%.2lf%%)\n", ttnodes,
                    100.0 * ttnodes / nodes);
-
             printf("Time: %.3lf seconds, KNPS: %.0f\n", time_taken,
                    (nodes + qnodes) / (time_taken * 1000));
-            printf("Total time: %.3lf seconds\n", total_time);
         }
 
         // Stop searching if there is 1 legal move or max depth is reached
@@ -84,6 +88,12 @@ int search_position(Board *board, Move *move, int time) {
             pthread_cancel(tid);
             break;
         }
+    }
+
+    if (LOG_FLAG) {
+        printf("\nTotal time: %.3lf seconds\n",
+               (double)(end_time - start_time) / CLOCKS_PER_SEC);
+        printf("Branching factor: %.2lf\n", pow(final_nodes, 1.0 / depth));
     }
 
     // Free resources
@@ -97,10 +107,15 @@ int search_position(Board *board, Move *move, int time) {
 // Alpha beta algorithm
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline) {
-    Move moves[MAX_MOVES], tt_move = NULLMOVE, best_move = NULLMOVE;
+    Move moves[MAX_MOVES], tt_move = NULLMOVE, best_move = NULLMOVE, move;
     Line line = {0, {0}};
     uint8_t tt_flag = UPPER_BOUND;
     int score;
+
+    // Time over
+    if (time_over) {
+        return INVALID_SCORE;
+    }
 
     // Mate distance pruning
     if (alpha < -INFINITY + ply) {
@@ -122,11 +137,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // Quiescence search at leaf nodes
     if (depth == 0) {
         mainline->length = 0;
-        log_run(hnodes++;);
+        log_increment(hnodes);
         return quiescence_search(board, alpha, beta);
     }
 
-    log_run(nodes++);
+    log_increment(nodes);
 
     // Check if position is in transposition table
     if (ply) {
@@ -134,7 +149,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
             get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
         if (score != INVALID_SCORE) {
-            log_run(ttnodes++);
+            log_increment(ttnodes);
 
             // Return score in non-pv nodes or on exact hash hits
             if (alpha + 1 >= beta || (score > alpha && score < beta)) {
@@ -146,10 +161,6 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // Iterate over all pseudo legal moves
     int count = generate_moves(board, moves), moves_count = 0;
     for (int i = 0; i < count; i++) {
-        if (time_over) {
-            return INVALID_SCORE;
-        }
-
         make_move(board, moves[i]);
 
         // Removes illegal moves
