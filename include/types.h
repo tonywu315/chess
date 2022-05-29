@@ -33,11 +33,6 @@
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
-#define NULLMOVE 0
-#define PROMOTION 1
-#define ENPASSANT 2
-#define CASTLING 3
-
 // Debug flag
 #ifdef DEBUG
 #define DEBUG_FLAG true
@@ -146,7 +141,7 @@ enum Color {
     NO_COLOR
 };
 
-enum Piece_type {
+enum Piece_Type {
     PAWN,
     KNIGHT,
     BISHOP,
@@ -171,13 +166,6 @@ enum Direction {
     DOWNRIGHT = -7,
     DOWN = -8,
     DOWNLEFT = -9
-};
-
-enum Result {
-    NONE,
-    WHITE_WIN,
-    BLACK_WIN,
-    DRAW
 };
 // clang-format on
 

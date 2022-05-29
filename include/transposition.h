@@ -3,9 +3,14 @@
 
 #include "types.h"
 
-#define EXACT_BOUND 0
-#define LOWER_BOUND 1
-#define UPPER_BOUND 2
+#define TT_HIT 32000
+#define NO_TT_HIT 32001
+
+enum Bound {
+    EXACT_BOUND,
+    LOWER_BOUND,
+    UPPER_BOUND,
+};
 
 void init_transposition(int megabytes);
 void clear_transposition();
