@@ -141,7 +141,7 @@ enum Color {
     NO_COLOR
 };
 
-enum Piece_Type {
+enum PieceType {
     PAWN,
     KNIGHT,
     BISHOP,
@@ -166,6 +166,13 @@ enum Direction {
     DOWNRIGHT = -7,
     DOWN = -8,
     DOWNLEFT = -9
+};
+
+enum MoveType {
+    NULLMOVE,
+    PROMOTION,
+    ENPASSANT,
+    CASTLING,
 };
 // clang-format on
 
@@ -207,8 +214,8 @@ static inline int get_move_end(Move move) { return (move >> 6) & 0x3F; }
 static inline int get_move_flag(Move move) { return (move >> 12) & 3; }
 static inline int get_move_promotion(Move move) { return (move >> 14) & 3; }
 
-static inline int get_piece(int piece) { return piece & 7; }
-static inline int get_color(int piece) { return piece >> 3; }
+static inline int get_piece_type(int piece) { return piece & 7; }
+static inline int get_piece_color(int piece) { return piece >> 3; }
 static inline int make_piece(int piece, int color) {
     return piece | (color << 3);
 }

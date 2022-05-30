@@ -151,7 +151,7 @@ static int get_move(Board *board, Move *move, bool single) {
         int end = make_square(end_file, end_rank);
 
         // Promotion
-        if (get_piece(board->board[start]) == PAWN &&
+        if (get_piece_type(board->board[start]) == PAWN &&
             start_rank == (board->player == WHITE ? 6 : 1)) {
             if (promotion == NO_PIECE_TYPE) {
                 return FAILURE;
