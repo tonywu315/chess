@@ -33,7 +33,7 @@ int search_position(Board *board, Move *move, int time) {
     pthread_create(&tid, NULL, chess_clock, (void *)&time);
 
     if (LOG_FLAG) {
-        start_time = clock();
+        start_time = end_time = clock();
     }
 
     // Iterative deepening
@@ -111,11 +111,10 @@ int search_position(Board *board, Move *move, int time) {
 // Alpha beta algorithm
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline) {
-    Move moves[MAX_MOVES], tt_move = NULLMOVE, best_move = NULLMOVE, move;
+    Move moves[MAX_MOVES], tt_move = NULLMOVE, best_move = NULLMOVE;
     MoveList move_list[MAX_MOVES];
     Line line = {0, {0}};
     uint8_t tt_flag = UPPER_BOUND;
-    int score;
 
     // Time over
     if (time_over) {
@@ -149,7 +148,8 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     log_increment(nodes);
 
     // Check if position is in transposition table
-    score = get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
+    int score =
+        get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
     if (score != NO_TT_HIT) {
         log_increment(tt_hits);
@@ -170,11 +170,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // Iterate over moves
     for (int i = 0; i < count; i++) {
         // Move next best move to the front
-        move = sort_moves(move_list, count, i);
+        Move move = sort_moves(move_list, count, i);
 
         make_move(board, move);
 
-        // Removes illegal moves
+        // Remove illegal moves
         if (in_check(board, !board->player)) {
             unmake_move(board, move);
             continue;

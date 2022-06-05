@@ -15,16 +15,16 @@ typedef struct moveList {
     2. Winning captures with MVV/LVA
     3. Equal captures
     4. Killer moves
-    5. Quiet moves
-    6. Losing captures
+    5. Losing captures
+    6. Quiet moves
 */
 enum MoveValue {
     TT_MOVE = 100,
     WINNING_CAPTURE = 80,
     EQUAL_CAPTURE = 60,
     KILLER_MOVE = 40,
-    QUIET_MOVE = 20,
-    LOSING_CAPTURE = 0,
+    LOSING_CAPTURE = 20,
+    QUIET_MOVE = 0,
 };
 
 enum MVV_LVA {
@@ -62,6 +62,8 @@ enum MVV_LVA {
 
 void score_moves(Board *board, Move *moves, MoveList *move_list, int length,
                  Move tt_move);
+void score_quiescence_moves(Board *board, Move *moves, MoveList *move_list,
+                            int length);
 Move sort_moves(MoveList *move_list, int length, int index);
 
 #endif

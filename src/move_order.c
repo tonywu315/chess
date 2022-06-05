@@ -2,7 +2,7 @@
 
 static inline int mvv_lva(int attacker, int victim);
 
-// Score each move
+// Score moves and save in move list
 void score_moves(Board *board, Move *moves, MoveList *move_list, int length,
                  Move tt_move) {
     for (int i = 0; i < length; i++) {
@@ -35,6 +35,17 @@ void score_moves(Board *board, Move *moves, MoveList *move_list, int length,
                 }
             }
         }
+    }
+}
+
+// Score quiescence moves and save in move list
+void score_quiescence_moves(Board *board, Move *moves, MoveList *move_list,
+                            int length) {
+    for (int i = 0; i < length; i++) {
+        Move move = moves[i];
+        move_list[i].move = moves[i];
+        move_list[i].score = mvv_lva(board->board[get_move_start(move)],
+                                     board->board[get_move_end(move)]);
     }
 }
 

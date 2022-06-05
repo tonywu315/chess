@@ -3,9 +3,13 @@
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
+#include "move_order.h"
 
 // Continue limited search until a quiet position is reached
 int quiescence_search(Board *board, int alpha, int beta) {
+    Move moves[MAX_MOVES];
+    MoveList move_list[MAX_MOVES];
+
     if (time_over) {
         return INVALID_SCORE;
     }
@@ -22,20 +26,23 @@ int quiescence_search(Board *board, int alpha, int beta) {
     }
 
     // Search only captures and queen promotions
-    Move moves[MAX_MOVES];
     int count = generate_quiescence_moves(board, moves);
-    for (int i = 0; i < count; i++) {
-        // Recursively search game tree
-        make_move(board, moves[i]);
+    score_quiescence_moves(board, moves, move_list, count);
 
-        // Removes illegal moves
+    for (int i = 0; i < count; i++) {
+        Move move = sort_moves(move_list, count, i);
+
+        make_move(board, move);
+
+        // Remove illegal moves
         if (in_check(board, !board->player)) {
-            unmake_move(board, moves[i]);
+            unmake_move(board, move);
             continue;
         }
 
+        // Recursively search game tree
         score = -quiescence_search(board, -beta, -alpha);
-        unmake_move(board, moves[i]);
+        unmake_move(board, move);
 
         // Alpha cutoff
         if (score > alpha) {
