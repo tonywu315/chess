@@ -3,14 +3,15 @@
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
+#include "move_order.h"
 #include "quiescence.h"
 #include "transposition.h"
 
-U64 nodes;
-U64 hnodes;
-U64 qnodes;
-U64 ttnodes;
 bool time_over;
+
+// Variables used for logging
+clock_t depth_time, start_time, end_time;
+U64 nodes, hnodes, qnodes, tt_hits, tt_cuts, final_nodes;
 
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
@@ -19,7 +20,6 @@ static void *chess_clock(void *time);
 // Search position for best move within time limit
 int search_position(Board *board, Move *move, int time) {
     pthread_t tid;
-    clock_t depth_time, start_time = clock();
     Line mainline = {0, {0}};
     Move best_move = 0;
     int best_score = 0, score = 0;
@@ -32,20 +32,27 @@ int search_position(Board *board, Move *move, int time) {
     time_over = false;
     pthread_create(&tid, NULL, chess_clock, (void *)&time);
 
+    if (LOG_FLAG) {
+        start_time = end_time = clock();
+    }
+
     // Iterative deepening
-    for (int depth = 1;; depth++) {
+    int depth;
+    for (depth = 1;; depth++) {
         if (LOG_FLAG) {
             depth_time = clock();
             nodes = 0;
             hnodes = 0;
             qnodes = 0;
-            ttnodes = 0;
+            tt_hits = 0;
+            tt_cuts = 0;
         }
 
         score = search(board, alpha, beta, 0, depth, &mainline);
 
         // Stop searching if time is over and discard unfinished score
         if (time_over) {
+            depth--;
             break;
         }
 
@@ -53,9 +60,10 @@ int search_position(Board *board, Move *move, int time) {
         best_score = board->player == WHITE ? score : -score;
 
         if (LOG_FLAG) {
-            clock_t now = clock();
-            double time_taken = (double)(now - depth_time) / CLOCKS_PER_SEC;
-            double total_time = (double)(now - start_time) / CLOCKS_PER_SEC;
+            final_nodes = hnodes;
+            end_time = clock();
+            double time_taken =
+                (double)(end_time - depth_time) / CLOCKS_PER_SEC;
 
             printf("\nDepth: %d\n", depth);
 
@@ -71,12 +79,12 @@ int search_position(Board *board, Move *move, int time) {
             printf(" - Interior:  %" PRId64 "\n", nodes);
             printf(" - Horizon:   %" PRId64 "\n", hnodes);
             printf(" - Quiescent: %" PRId64 "\n", qnodes - hnodes);
-            printf("TTNodes: %" PRId64 " (%.2lf%%)\n", ttnodes,
-                   100.0 * ttnodes / nodes);
-
+            printf("TT Hits: %" PRId64 " (%.2lf%%)\n", tt_hits,
+                   100.0 * tt_hits / nodes);
+            printf(" - TT Cuts: %" PRId64 " (%.2lf%%)\n", tt_cuts,
+                   100.0 * tt_cuts / nodes);
             printf("Time: %.3lf seconds, KNPS: %.0f\n", time_taken,
                    (nodes + qnodes) / (time_taken * 1000));
-            printf("Total time: %.3lf seconds\n", total_time);
         }
 
         // Stop searching if there is 1 legal move or max depth is reached
@@ -84,6 +92,12 @@ int search_position(Board *board, Move *move, int time) {
             pthread_cancel(tid);
             break;
         }
+    }
+
+    if (LOG_FLAG) {
+        printf("\nTotal time: %.3lf seconds\n",
+               (double)(end_time - start_time) / CLOCKS_PER_SEC);
+        printf("Branching factor: %.2lf\n", pow(final_nodes, 1.0 / depth));
     }
 
     // Free resources
@@ -98,9 +112,14 @@ int search_position(Board *board, Move *move, int time) {
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline) {
     Move moves[MAX_MOVES], tt_move = NULLMOVE, best_move = NULLMOVE;
+    MoveList move_list[MAX_MOVES];
     Line line = {0, {0}};
     uint8_t tt_flag = UPPER_BOUND;
-    int score;
+
+    // Time over
+    if (time_over) {
+        return INVALID_SCORE;
+    }
 
     // Mate distance pruning
     if (alpha < -INFINITY + ply) {
@@ -122,39 +141,42 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // Quiescence search at leaf nodes
     if (depth == 0) {
         mainline->length = 0;
-        log_run(hnodes++;);
+        log_increment(hnodes);
         return quiescence_search(board, alpha, beta);
     }
 
-    log_run(nodes++);
+    log_increment(nodes);
 
     // Check if position is in transposition table
-    if (ply) {
-        score =
-            get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
+    int score =
+        get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
-        if (score != INVALID_SCORE) {
-            log_run(ttnodes++);
+    if (score != NO_TT_HIT) {
+        log_increment(tt_hits);
 
+        if (ply && score != TT_HIT) {
             // Return score in non-pv nodes or on exact hash hits
             if (alpha + 1 >= beta || (score > alpha && score < beta)) {
+                log_increment(tt_cuts);
                 return score;
             }
         }
     }
 
-    // Iterate over all pseudo legal moves
+    // Generate pseudo legal moves and score them
     int count = generate_moves(board, moves), moves_count = 0;
+    score_moves(board, moves, move_list, count, tt_move);
+
+    // Iterate over moves
     for (int i = 0; i < count; i++) {
-        if (time_over) {
-            return INVALID_SCORE;
-        }
+        // Move next best move to the front
+        Move move = sort_moves(move_list, count, i);
 
-        make_move(board, moves[i]);
+        make_move(board, move);
 
-        // Removes illegal moves
+        // Remove illegal moves
         if (in_check(board, !board->player)) {
-            unmake_move(board, moves[i]);
+            unmake_move(board, move);
             continue;
         }
 
@@ -162,11 +184,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
         // Recursively search game tree
         score = -search(board, -beta, -alpha, ply + 1, depth - 1, &line);
-        unmake_move(board, moves[i]);
+        unmake_move(board, move);
 
         // Alpha cutoff
         if (score > alpha) {
-            best_move = moves[i];
+            best_move = move;
 
             // Update mainline
             mainline->moves[0] = best_move;

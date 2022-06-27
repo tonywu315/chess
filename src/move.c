@@ -81,10 +81,10 @@ void make_move(Board *board, Move move) {
             state.draw_ply = 0;
         }
 
-        if (get_piece(piece) == PAWN) {
+        if (get_piece_type(piece) == PAWN) {
             // Double pawn push sets enpassant square
             if ((start ^ end) == 16) {
-                state.enpassant = start + (get_color(piece) == WHITE ? 8 : -8);
+                state.enpassant = start + (get_piece_color(piece) == WHITE ? 8 : -8);
             } else if (flag == PROMOTION) {
                 // Promotion move
                 move_promotion(board, end, get_move_promotion(move) + KNIGHT);
@@ -175,7 +175,7 @@ static inline void move_piece(Board *board, int start, int end) {
     Bitboard pieces = create_bit(start) | create_bit(end);
 
     board->pieces[piece] ^= pieces;
-    board->occupancies[get_color(piece)] ^= pieces;
+    board->occupancies[get_piece_color(piece)] ^= pieces;
     board->occupancies[2] ^= pieces;
 
     board->board[start] = NO_PIECE;
@@ -191,9 +191,9 @@ static inline void move_capture(Board *board, int start, int end) {
     Bitboard start_bitboard = create_bit(start), end_bitboard = create_bit(end);
 
     board->pieces[piece] ^= start_bitboard | end_bitboard;
-    board->occupancies[get_color(piece)] ^= start_bitboard | end_bitboard;
+    board->occupancies[get_piece_color(piece)] ^= start_bitboard | end_bitboard;
     board->pieces[capture] ^= end_bitboard;
-    board->occupancies[get_color(capture)] ^= end_bitboard;
+    board->occupancies[get_piece_color(capture)] ^= end_bitboard;
     board->occupancies[2] ^= start_bitboard;
 
     board->board[start] = NO_PIECE;
@@ -215,7 +215,7 @@ static inline void move_castle(Board *board, int start, int end) {
 
     board->pieces[king] ^= kings;
     board->pieces[rook] ^= rooks;
-    board->occupancies[get_color(king)] ^= kings | rooks;
+    board->occupancies[get_piece_color(king)] ^= kings | rooks;
     board->occupancies[2] ^= kings | rooks;
 
     board->board[start] = NO_PIECE;
@@ -236,8 +236,8 @@ static inline void move_enpassant(Board *board, int start, int end, int enemy) {
 
     board->pieces[pawn] ^= pawns;
     board->pieces[enemy_piece] ^= enemies;
-    board->occupancies[get_color(pawn)] ^= pawns;
-    board->occupancies[!get_color(pawn)] ^= enemies;
+    board->occupancies[get_piece_color(pawn)] ^= pawns;
+    board->occupancies[!get_piece_color(pawn)] ^= enemies;
     board->occupancies[2] ^= pawns | enemies;
 
     board->board[start] = NO_PIECE;
@@ -253,7 +253,7 @@ static inline void move_promotion(Board *board, int square, int piece) {
     int pawn = board->board[square];
     Bitboard bitboard = create_bit(square);
 
-    if (get_color(pawn) == BLACK) {
+    if (get_piece_color(pawn) == BLACK) {
         piece += 8;
     }
 
@@ -277,7 +277,7 @@ static inline void unmove_castle(Board *board, int start, int end) {
 
     board->pieces[king] ^= kings;
     board->pieces[rook] ^= rooks;
-    board->occupancies[get_color(king)] ^= kings | rooks;
+    board->occupancies[get_piece_color(king)] ^= kings | rooks;
     board->occupancies[2] ^= kings | rooks;
 
     board->board[start] = king;
@@ -294,7 +294,7 @@ static inline void place_piece(Board *board, int square, int piece) {
     Bitboard bitboard = create_bit(square);
 
     board->pieces[piece] ^= bitboard;
-    board->occupancies[get_color(piece)] ^= bitboard;
+    board->occupancies[get_piece_color(piece)] ^= bitboard;
     board->occupancies[2] ^= bitboard;
 
     board->board[square] = piece;

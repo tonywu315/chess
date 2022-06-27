@@ -67,9 +67,11 @@ int get_transposition(U64 hash, int alpha, int beta, int ply, int depth,
                 return beta;
             }
         }
+
+        return TT_HIT;
     }
 
-    return INVALID_SCORE;
+    return NO_TT_HIT;
 }
 
 // Save position and score to transposition table

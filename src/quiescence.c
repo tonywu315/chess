@@ -1,38 +1,48 @@
 #include "quiescence.h"
+#include "attacks.h"
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
+#include "move_order.h"
 
 // Continue limited search until a quiet position is reached
 int quiescence_search(Board *board, int alpha, int beta) {
-    log_run(qnodes++);
+    Move moves[MAX_MOVES];
+    MoveList move_list[MAX_MOVES];
 
-    int score = eval(board);
-
-    if (score >= beta) {
-        return beta;
+    if (time_over) {
+        return INVALID_SCORE;
     }
+
+    log_increment(qnodes);
+
+    // Lower bound of score
+    int score = eval(board);
     if (score > alpha) {
+        if (score >= beta) {
+            return beta;
+        }
         alpha = score;
     }
 
     // Search only captures and queen promotions
-    Move moves[MAX_MOVES];
     int count = generate_quiescence_moves(board, moves);
-    for (int i = 0; i < count; i++) {
-        if (time_over) {
-            return INVALID_SCORE;
-        }
+    score_quiescence_moves(board, moves, move_list, count);
 
-        if (board->board[get_move_end(moves[i])] ==
-            make_piece(PAWN, board->player)) {
-            return INFINITY;
+    for (int i = 0; i < count; i++) {
+        Move move = sort_moves(move_list, count, i);
+
+        make_move(board, move);
+
+        // Remove illegal moves
+        if (in_check(board, !board->player)) {
+            unmake_move(board, move);
+            continue;
         }
 
         // Recursively search game tree
-        make_move(board, moves[i]);
         score = -quiescence_search(board, -beta, -alpha);
-        unmake_move(board, moves[i]);
+        unmake_move(board, move);
 
         // Alpha cutoff
         if (score > alpha) {

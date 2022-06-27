@@ -1,3 +1,4 @@
+#include "game.h"
 #include "attacks.h"
 #include "bitboard.h"
 #include "evaluation.h"
@@ -37,7 +38,7 @@ static void start_game(Board *board, bool single, bool player_first, int time) {
 
     // Loop until game ends
     int status = game_status(board);
-    while (status == NONE) {
+    while (status == NO_STATUS) {
         // Print board
         print_board(board, score, false);
 
@@ -150,7 +151,7 @@ static int get_move(Board *board, Move *move, bool single) {
         int end = make_square(end_file, end_rank);
 
         // Promotion
-        if (get_piece(board->board[start]) == PAWN &&
+        if (get_piece_type(board->board[start]) == PAWN &&
             start_rank == (board->player == WHITE ? 6 : 1)) {
             if (promotion == NO_PIECE_TYPE) {
                 return FAILURE;
@@ -193,5 +194,5 @@ static int game_status(Board *board) {
         return DRAW;
     }
 
-    return NONE;
+    return NO_STATUS;
 }
