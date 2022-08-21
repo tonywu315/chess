@@ -118,6 +118,8 @@ typedef struct transposition {
 extern Transposition *transposition;
 extern U64 transposition_size;
 
+extern Move cutoffs[MAX_GAME_LENGTH][2];
+
 extern int game_ply;
 extern U64 qnodes;
 extern bool time_over;
@@ -169,7 +171,7 @@ enum Direction {
 };
 
 enum MoveType {
-    NULLMOVE,
+    NORMAL_MOVE,
     PROMOTION,
     ENPASSANT,
     CASTLING,

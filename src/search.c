@@ -13,6 +13,8 @@ bool time_over;
 clock_t depth_time, start_time, end_time;
 U64 nodes, hnodes, qnodes, tt_hits, tt_cuts, final_nodes;
 
+Move cutoffs[MAX_GAME_LENGTH][2];
+
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
 static void *chess_clock(void *time);
@@ -113,7 +115,7 @@ int search_position(Board *board, Move *move, int time) {
 // Alpha beta algorithm
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline) {
-    Move moves[MAX_MOVES], tt_move = NULLMOVE, best_move = NULLMOVE;
+    Move moves[MAX_MOVES], tt_move = 0, best_move = 0;
     MoveList move_list[MAX_MOVES];
     Line line = {0, {0}};
     uint8_t tt_flag = UPPER_BOUND;
@@ -169,7 +171,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
     // Generate pseudo legal moves and score them
     int count = generate_moves(board, moves), moves_count = 0;
-    score_moves(board, moves, move_list, count, tt_move);
+    score_moves(board, moves, move_list, tt_move, ply, count);
 
     // Iterate over moves
     for (int i = 0; i < count; i++) {
@@ -202,6 +204,16 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
             // Beta cutoff
             if (score >= beta) {
+                // Store moves that cause cutoffs to order them higher
+                if (board->board[get_move_end(move)] == NO_PIECE &&
+                    get_move_flag(move) == NORMAL_MOVE) {
+                    if (cutoffs[ply][0]) {
+                        cutoffs[ply][1] = move;
+                    } else {
+                        cutoffs[ply][0] = move;
+                    }
+                }
+
                 alpha = beta;
                 tt_flag = LOWER_BOUND;
                 break;

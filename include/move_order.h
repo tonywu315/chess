@@ -60,8 +60,8 @@ enum MVV_LVA {
     PxQ,
 };
 
-void score_moves(Board *board, Move *moves, MoveList *move_list, int length,
-                 Move tt_move);
+void score_moves(Board *board, Move *moves, MoveList *move_list, Move tt_move,
+                 int ply, int length);
 void score_quiescence_moves(Board *board, Move *moves, MoveList *move_list,
                             int length);
 Move sort_moves(MoveList *move_list, int length, int index);

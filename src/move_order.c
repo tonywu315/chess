@@ -3,38 +3,33 @@
 static inline int mvv_lva(int attacker, int victim);
 
 // Score moves and save in move list
-void score_moves(Board *board, Move *moves, MoveList *move_list, int length,
-                 Move tt_move) {
+void score_moves(Board *board, Move *moves, MoveList *move_list, Move tt_move,
+                 int ply, int length) {
     for (int i = 0; i < length; i++) {
         Move move = moves[i];
+        int score = QUIET_MOVE;
+        int flag = get_move_flag(move);
+        int capture = board->board[get_move_end(move)];
 
+        // Score move
         if (move == tt_move) {
-            move_list[i].move = move;
-            move_list[i].score = TT_MOVE;
-        } else {
-            int flag = get_move_flag(move);
-
-            if (flag == PROMOTION) {
-                move_list[i].move = move;
-                move_list[i].score = PxR + get_move_promotion(move);
-            } else if (flag == ENPASSANT) {
-                move_list[i].move = move;
-                move_list[i].score = PxP;
-            } else if (flag == CASTLING) {
-                move_list[i].move = move;
-                move_list[i].score = QUIET_MOVE + 1;
-            } else {
-                int capture = board->board[get_move_end(move)];
-                if (capture != NO_PIECE) {
-                    move_list[i].move = moves[i];
-                    move_list[i].score =
-                        mvv_lva(board->board[get_move_start(move)], capture);
-                } else {
-                    move_list[i].move = moves[i];
-                    move_list[i].score = QUIET_MOVE;
-                }
-            }
+            score = TT_MOVE;
+        } else if (capture != NO_PIECE) {
+            score = mvv_lva(board->board[get_move_start(move)], capture);
+        } else if (move == cutoffs[ply][0] || move == cutoffs[ply][1]) {
+            score = KILLER_MOVE;
+        } else if (flag == NORMAL_MOVE) {
+            score = QUIET_MOVE;
+        } else if (flag == PROMOTION) {
+            score = PxR + get_move_promotion(move);
+        } else if (flag == ENPASSANT) {
+            score = PxP;
+        } else if (flag == CASTLING) {
+            score = QUIET_MOVE + 1;
         }
+
+        move_list[i].move = move;
+        move_list[i].score = score;
     }
 }
 
