@@ -1,4 +1,5 @@
 #include "transposition.h"
+#include "move.h"
 
 U64 piece_key[16][64];
 U64 castling_key[16];
@@ -9,6 +10,7 @@ Transposition *transposition = NULL;
 U64 transposition_size = 0;
 
 static inline void init_hash_keys();
+static inline void print_pv_moves(Board *board);
 
 // Initialize transposition table
 void init_transposition(int megabytes) {
@@ -50,9 +52,11 @@ int get_transposition(U64 hash, int alpha, int beta, int ply, int depth,
     if (entry->hash == hash) {
         *move = entry->move;
 
+        // Only retrieve entries with sufficient depth
         if (entry->depth >= depth) {
-            // Adjust mate score based off of the root node
             int score = entry->score;
+
+            // Adjust mate score based off of the root node
             if (is_mate_score(score)) {
                 score += (score > 0) ? -ply : ply;
             }
@@ -95,7 +99,41 @@ void set_transposition(U64 hash, int score, int flag, int ply, int depth,
     }
 }
 
-// Get zobrist hash of current position, this function is for debug purposes
+// Save principal variation moves to transposition table
+void set_pv_moves(Board *board, Line *mainline, int score) {
+    Transposition *entry;
+
+    for (int i = 0; i < mainline->length; i++) {
+        entry = &transposition[board->hash & (transposition_size - 1)];
+
+        // Adjust mate score based off of the root node
+        if (is_mate_score(score)) {
+            score += (score > 0) ? i : -i;
+        }
+
+        entry->hash = board->hash;
+        entry->move = mainline->moves[i];
+        entry->score = (i & 1) ? -score : score;
+        entry->age = game_ply;
+        entry->depth = mainline->length - i;
+        entry->flag = EXACT_BOUND;
+
+        make_move(board, mainline->moves[i]);
+    }
+
+    for (int i = mainline->length - 1; i >= 0; i--) {
+        unmake_move(board, mainline->moves[i]);
+    }
+}
+
+// Retrieve principal variation from transposition table
+void get_pv_moves(Board *board) {
+    printf("\nBest moves:");
+    print_pv_moves(board);
+    printf("\n");
+}
+
+// Get zobrist hash of current position iteratively for debug purposes
 U64 get_hash(Board *board) {
     U64 hash_key = UINT64_C(0);
     Bitboard white_pieces, black_pieces;
@@ -134,4 +172,22 @@ static inline void init_hash_keys() {
     }
 
     side_key = rand64();
+}
+
+// Display the principal variation from tranposition table
+static inline void print_pv_moves(Board *board) {
+    U64 hash = board->hash;
+    Transposition *entry = &transposition[hash & (transposition_size - 1)];
+
+    if (entry->hash == hash && entry->flag == EXACT_BOUND) {
+        Move move = entry->move;
+        printf(" %s%s", get_coordinates(get_move_start(move)),
+               get_coordinates(get_move_end(move)));
+
+        if (entry->depth != 1) {
+            make_move(board, move);
+            print_pv_moves(board);
+            unmake_move(board, move);
+        }
+    }
 }

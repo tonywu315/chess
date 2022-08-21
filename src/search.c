@@ -23,7 +23,6 @@ int search_position(Board *board, Move *move, int time) {
     Line mainline = {0, {0}};
     Move best_move = 0;
     int best_score = 0, score = 0;
-    int alpha = -INFINITY, beta = INFINITY;
 
     Move moves[MAX_MOVES];
     int move_count = generate_legal_moves(board, moves);
@@ -48,13 +47,16 @@ int search_position(Board *board, Move *move, int time) {
             tt_cuts = 0;
         }
 
-        score = search(board, alpha, beta, 0, depth, &mainline);
+        score = search(board, -INFINITY, INFINITY, 0, depth, &mainline);
 
         // Stop searching if time is over and discard unfinished score
         if (time_over) {
             depth--;
             break;
         }
+
+        // Save principal variation moves to the transposition table
+        set_pv_moves(board, &mainline, score);
 
         best_move = mainline.moves[0];
         best_score = board->player == WHITE ? score : -score;
@@ -155,8 +157,10 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
         log_increment(tt_hits);
 
         if (ply && score != TT_HIT) {
-            // Return score in non-pv nodes or on exact hash hits
-            if (alpha + 1 >= beta || (score > alpha && score < beta)) {
+            // Return score in non-pv nodes
+            // TODO: return score when (score > alpha && score < beta) even on
+            // PV nodes and find another way to reveal PV line in this case
+            if (alpha + 1 >= beta) {
                 log_increment(tt_cuts);
                 return score;
             }
@@ -184,6 +188,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
         // Recursively search game tree
         score = -search(board, -beta, -alpha, ply + 1, depth - 1, &line);
+
         unmake_move(board, move);
 
         // Alpha cutoff
