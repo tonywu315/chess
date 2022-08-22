@@ -118,7 +118,7 @@ typedef struct transposition {
 extern Transposition *transposition;
 extern U64 transposition_size;
 
-extern Move cutoffs[MAX_GAME_LENGTH][2];
+extern Move killers[MAX_DEPTH][2];
 
 extern int game_ply;
 extern U64 qnodes;

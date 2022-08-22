@@ -13,7 +13,7 @@ bool time_over;
 clock_t depth_time, start_time, end_time;
 U64 nodes, hnodes, qnodes, tt_hits, tt_cuts, final_nodes;
 
-Move cutoffs[MAX_GAME_LENGTH][2];
+Move killers[MAX_DEPTH][2];
 
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
@@ -50,6 +50,9 @@ int search_position(Board *board, Move *move, int time) {
         }
 
         score = search(board, -INFINITY, INFINITY, 0, depth, &mainline);
+
+        // Reset killers table
+        memset(killers, 0, sizeof(killers));
 
         // Stop searching if time is over and discard unfinished score
         if (time_over) {
@@ -159,13 +162,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
         log_increment(tt_hits);
 
         if (ply && score != TT_HIT) {
+            // TODO: add conditional after implementing PVS
             // Return score in non-pv nodes
-            // TODO: return score when (score > alpha && score < beta) even on
-            // PV nodes and find another way to reveal PV line in this case
-            if (alpha + 1 >= beta) {
-                log_increment(tt_cuts);
-                return score;
-            }
+            // if (alpha + 1 == beta) {}
+            log_increment(tt_cuts);
+            return score;
         }
     }
 
@@ -204,14 +205,12 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
             // Beta cutoff
             if (score >= beta) {
-                // Store moves that cause cutoffs to order them higher
+                // Store killer moves that cause cutoffs
                 if (board->board[get_move_end(move)] == NO_PIECE &&
-                    get_move_flag(move) == NORMAL_MOVE) {
-                    if (cutoffs[ply][0]) {
-                        cutoffs[ply][1] = move;
-                    } else {
-                        cutoffs[ply][0] = move;
-                    }
+                    get_move_flag(move) == NORMAL_MOVE &&
+                    killers[ply][0] != move) {
+                    killers[ply][1] = killers[ply][0];
+                    killers[ply][0] = move;
                 }
 
                 alpha = beta;
