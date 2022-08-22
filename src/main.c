@@ -29,5 +29,5 @@ int main(int argc, char **argv) {
         free(transposition);
     }
 
-    return SUCCESS;
+    return 0;
 }

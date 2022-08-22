@@ -3,7 +3,6 @@
 
 #include <ctype.h>
 #include <inttypes.h>
-#include <limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,6 +11,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <math.h>
+#ifdef INFINITY
+#undef INFINITY
+#endif
 
 #define VERSION "2.2"
 
@@ -29,11 +33,6 @@
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
-#define NULLMOVE 0
-#define PROMOTION 1
-#define ENPASSANT 2
-#define CASTLING 3
-
 // Debug flag
 #ifdef DEBUG
 #define DEBUG_FLAG true
@@ -48,11 +47,11 @@
 #define LOG_FLAG false
 #endif
 
-// Run code if log flag is on
-#define log_run(code)                                                          \
+// Increment if log flag is on
+#define log_increment(x)                                                       \
     do {                                                                       \
         if (LOG_FLAG)                                                          \
-            code;                                                              \
+            ++(x);                                                             \
     } while (0)
 
 // Prints debug information
@@ -119,6 +118,8 @@ typedef struct transposition {
 extern Transposition *transposition;
 extern U64 transposition_size;
 
+extern Move killers[MAX_DEPTH][2];
+
 extern int game_ply;
 extern U64 qnodes;
 extern bool time_over;
@@ -142,7 +143,7 @@ enum Color {
     NO_COLOR
 };
 
-enum Piece_type {
+enum PieceType {
     PAWN,
     KNIGHT,
     BISHOP,
@@ -169,11 +170,11 @@ enum Direction {
     DOWNLEFT = -9
 };
 
-enum Result {
-    NONE,
-    WHITE_WIN,
-    BLACK_WIN,
-    DRAW
+enum MoveType {
+    NORMAL_MOVE,
+    PROMOTION,
+    ENPASSANT,
+    CASTLING,
 };
 // clang-format on
 
@@ -215,8 +216,8 @@ static inline int get_move_end(Move move) { return (move >> 6) & 0x3F; }
 static inline int get_move_flag(Move move) { return (move >> 12) & 3; }
 static inline int get_move_promotion(Move move) { return (move >> 14) & 3; }
 
-static inline int get_piece(int piece) { return piece & 7; }
-static inline int get_color(int piece) { return piece >> 3; }
+static inline int get_piece_type(int piece) { return piece & 7; }
+static inline int get_piece_color(int piece) { return piece >> 3; }
 static inline int make_piece(int piece, int color) {
     return piece | (color << 3);
 }
