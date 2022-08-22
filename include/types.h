@@ -17,7 +17,7 @@
 #undef INFINITY
 #endif
 
-#define VERSION "2.2"
+#define VERSION "2.3"
 
 #define MAX_DEPTH 64
 #define MAX_MOVES 256
