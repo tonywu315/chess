@@ -55,8 +55,6 @@ void start_game(Board *board, bool player_first, int time) {
 static int computer_move(Board *board, int *score, int time) {
     Move move;
 
-    printf("computer game ply %d\n", game_ply);
-
     *score = search_position(board, &move, time);
     make_move(board, move);
 

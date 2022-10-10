@@ -11,7 +11,7 @@ bool time_over;
 
 clock_t depth_time, start_time, end_time;
 Search info = {0};
-Replay replay = {{0}, 0, false};
+Replay replay = {0};
 
 Move killers[MAX_DEPTH][2];
 
