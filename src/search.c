@@ -9,9 +9,9 @@
 
 bool time_over;
 
-// Variables used for logging
 clock_t depth_time, start_time, end_time;
-U64 nodes, hnodes, qnodes, tt_hits, tt_cuts, final_nodes;
+Search info = {0};
+Replay replay = {{0}, 0, false};
 
 Move killers[MAX_DEPTH][2];
 
@@ -22,9 +22,10 @@ static void *chess_clock(void *time);
 // Search position for best move within time limit
 int search_position(Board *board, Move *move, int time) {
     pthread_t tid;
-    Line mainline = {0, {0}};
+    Line mainline = {{0}, 0};
     Move best_move = 0;
     int best_score = 0, score = 0;
+    U64 final_nodes = 0;
 
     Move moves[MAX_MOVES];
     int move_count = generate_legal_moves(board, moves);
@@ -33,30 +34,37 @@ int search_position(Board *board, Move *move, int time) {
     time_over = false;
     pthread_create(&tid, NULL, chess_clock, (void *)&time);
 
-    if (LOG_FLAG) {
+    if (DEBUG_FLAG) {
         start_time = end_time = clock();
     }
 
     // Iterative deepening
-    int depth;
-    for (depth = 1;; depth++) {
-        if (LOG_FLAG) {
+    for (info.depth = 1;; info.depth++) {
+        if (DEBUG_FLAG) {
             depth_time = clock();
-            nodes = 0;
-            hnodes = 0;
-            qnodes = 0;
-            tt_hits = 0;
-            tt_cuts = 0;
+            info.nodes = 0;
+            info.hnodes = 0;
+            info.qnodes = 0;
+            info.tt_hits = 0;
+            info.tt_cuts = 0;
         }
 
-        score = search(board, -INFINITY, INFINITY, 0, depth, &mainline);
+        score = search(board, -INFINITY, INFINITY, 0, info.depth, &mainline);
 
         // Reset killers table
         memset(killers, 0, sizeof(killers));
 
         // Stop searching if time is over and discard unfinished score
-        if (time_over) {
-            depth--;
+        if (is_time_over()) {
+            // Save partial search information for debugging
+            if (DEBUG_FLAG) {
+                replay.ply[game_ply].search.depth = info.depth;
+                replay.ply[game_ply].search.nodes = info.nodes;
+                replay.ply[game_ply].search.qnodes = info.qnodes;
+            }
+
+            // Decrement depth because it was not fully searched
+            info.depth--;
             break;
         }
 
@@ -66,13 +74,13 @@ int search_position(Board *board, Move *move, int time) {
         best_move = mainline.moves[0];
         best_score = board->player == WHITE ? score : -score;
 
-        if (LOG_FLAG) {
-            final_nodes = hnodes;
+        if (DEBUG_FLAG) {
+            final_nodes = info.hnodes;
             end_time = clock();
             double time_taken =
                 (double)(end_time - depth_time) / CLOCKS_PER_SEC;
 
-            printf("\nDepth: %d\n", depth);
+            printf("\nDepth: %d\n", info.depth);
 
             printf("Evaluation: %d\n", best_score);
             printf("Best moves:");
@@ -82,29 +90,29 @@ int search_position(Board *board, Move *move, int time) {
                        get_coordinates(get_move_end(mainline.moves[i])));
             }
 
-            printf("\nNodes: %" PRId64 "\n", nodes + qnodes);
-            printf(" - Interior:  %" PRId64 "\n", nodes);
-            printf(" - Horizon:   %" PRId64 "\n", hnodes);
-            printf(" - Quiescent: %" PRId64 "\n", qnodes - hnodes);
-            printf("TT Hits: %" PRId64 " (%.2lf%%)\n", tt_hits,
-                   100.0 * tt_hits / nodes);
-            printf(" - TT Cuts: %" PRId64 " (%.2lf%%)\n", tt_cuts,
-                   100.0 * tt_cuts / nodes);
+            printf("\nNodes: %" PRId64 "\n", info.nodes + info.qnodes);
+            printf(" - Interior:  %" PRId64 "\n", info.nodes);
+            printf(" - Horizon:   %" PRId64 "\n", info.hnodes);
+            printf(" - Quiescent: %" PRId64 "\n", info.qnodes - info.hnodes);
+            printf("TT Hits: %" PRId64 " (%.2lf%%)\n", info.tt_hits,
+                   100.0 * info.tt_hits / info.nodes);
+            printf(" - TT Cuts: %" PRId64 " (%.2lf%%)\n", info.tt_cuts,
+                   100.0 * info.tt_cuts / info.nodes);
             printf("Time: %.3lf seconds, KNPS: %.0f\n", time_taken,
-                   (nodes + qnodes) / (time_taken * 1000));
+                   (info.nodes + info.qnodes) / (time_taken * 1000));
         }
 
         // Stop searching if there is 1 legal move or max depth is reached
-        if ((move_count == 1) || depth == MAX_DEPTH) {
+        if ((move_count == 1) || info.depth == MAX_DEPTH) {
             pthread_cancel(tid);
             break;
         }
     }
 
-    if (LOG_FLAG) {
+    if (DEBUG_FLAG) {
         printf("\nTotal time: %.3lf seconds\n",
                (double)(end_time - start_time) / CLOCKS_PER_SEC);
-        printf("Branching factor: %.2lf\n", pow(final_nodes, 1.0 / depth));
+        printf("Branching factor: %.2lf\n", pow(final_nodes, 1.0 / info.depth));
     }
 
     // Free resources
@@ -120,11 +128,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline) {
     Move moves[MAX_MOVES], tt_move = 0, best_move = 0;
     MoveList move_list[MAX_MOVES];
-    Line line = {0, {0}};
+    Line line = {{0}, 0};
     uint8_t tt_flag = UPPER_BOUND;
 
     // Time over
-    if (time_over) {
+    if (is_time_over()) {
         return INVALID_SCORE;
     }
 
@@ -148,24 +156,24 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     // Quiescence search at leaf nodes
     if (depth == 0) {
         mainline->length = 0;
-        log_increment(hnodes);
+        increment(info.hnodes);
         return quiescence_search(board, alpha, beta);
     }
 
-    log_increment(nodes);
+    increment(info.nodes);
 
     // Check if position is in transposition table
     int score =
         get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
     if (score != NO_TT_HIT) {
-        log_increment(tt_hits);
+        increment(info.tt_hits);
 
         if (ply && score != TT_HIT) {
             // TODO: add conditional after implementing PVS
             // Return score in non-pv nodes
             // if (alpha + 1 == beta) {}
-            log_increment(tt_cuts);
+            increment(info.tt_cuts);
             return score;
         }
     }
@@ -237,8 +245,6 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 // Sleep time seconds
 static void *chess_clock(void *time) {
     sleep(*(int *)time);
-
     time_over = true;
-
     return NULL;
 }

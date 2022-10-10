@@ -9,58 +9,35 @@
 static Move game_moves[MAX_GAME_LENGTH];
 int game_ply = 0;
 
-static void start_game(Board *board, bool single, bool player_first, int time);
-static int get_move(Board *board, Move *move, bool single);
+static int computer_move(Board *board, int *score, int time);
+static int player_move(Board *board);
+static int get_move(Board *board, Move *move);
 static int move_legal(Board *board, Move move);
-static int game_status(Board *board);
-
-// Start singleplayer game
-void start_singleplayer(Board *board, bool player_starts, int time) {
-    start_game(board, true, player_starts, time);
-}
-
-// Start multiplayer game
-void start_multiplayer(Board *board) { start_game(board, false, true, 0); }
+static int update_game_moves(Board *board, Move move);
 
 // Start chess game
-static void start_game(Board *board, bool single, bool player_first, int time) {
-    Move move;
-    int score = eval(board);
+void start_game(Board *board, bool player_first, int time) {
+    int score = eval(board), status = NO_STATUS;
 
     printf("\n=== Chess v%s ===\n", VERSION);
 
     // Computer moves first if player is black
-    if (single && !player_first) {
-        score = search_position(board, &move, time);
-        make_move(board, move);
-        game_moves[game_ply++] = move;
+    if (!player_first) {
+        status = computer_move(board, &score, time);
     }
 
     // Loop until game ends
-    int status = game_status(board);
-    while (status == NO_STATUS) {
-        // Print board
+    while (!status) {
+        // Player move
         print_board(board, score, false);
-
-        // Input move until it is legal and then make the move
-        while (get_move(board, &move, single) || move_legal(board, move)) {
-        }
-        game_moves[game_ply++] = move;
-
-        // Stop game once it ends
-        if ((status = game_status(board))) {
+        status = player_move(board);
+        if (status) {
             board->player = !board->player;
             break;
         }
-        score = eval(board);
 
-        // Computer moves if it is singleplayer
-        if (single) {
-            score = search_position(board, &move, time);
-            make_move(board, move);
-            game_moves[game_ply++] = move;
-            status = game_status(board);
-        }
+        // Computer move
+        status = computer_move(board, &score, time);
     }
 
     // Print the board at the end of the game
@@ -74,8 +51,41 @@ static void start_game(Board *board, bool single, bool player_first, int time) {
     }
 }
 
+// Play computer move
+static int computer_move(Board *board, int *score, int time) {
+    Move move;
+
+    printf("computer game ply %d\n", game_ply);
+
+    *score = search_position(board, &move, time);
+    make_move(board, move);
+
+    return update_game_moves(board, move);
+}
+
+// Play player move
+static int player_move(Board *board) {
+    Move move;
+
+    if (DEBUG_FLAG && replay.is_replay && game_ply < replay.game_ply) {
+        move = replay.ply[game_ply].move;
+        make_move(board, move);
+        printf("Move: %s%s\n", get_coordinates(get_move_start(move)),
+               get_coordinates(get_move_end(move)));
+
+        return update_game_moves(board, move);
+    }
+
+    // Input move until it is legal and then make the move
+    while (get_move(board, &move) || move_legal(board, move)) {
+    }
+    replay.ply[game_ply].move = move;
+
+    return update_game_moves(board, move);
+}
+
 // Parse player move and returns move
-static int get_move(Board *board, Move *move, bool single) {
+static int get_move(Board *board, Move *move) {
     char input[6] = {0};
     int start_file, start_rank, end_file, end_rank, promotion = NO_PIECE_TYPE;
 
@@ -108,13 +118,9 @@ static int get_move(Board *board, Move *move, bool single) {
 
     // Option to undo moves
     if (!strcmp(input, "undo")) {
-        // If single player, undo 2 moves. Otherwise, undo 1 move
-        if (single) {
-            if (game_ply >= 2) {
-                unmake_move(board, game_moves[--game_ply]);
-                unmake_move(board, game_moves[--game_ply]);
-            }
-        } else if (game_ply >= 1) {
+        // Undo 2 moves
+        if (game_ply >= 2) {
+            unmake_move(board, game_moves[--game_ply]);
             unmake_move(board, game_moves[--game_ply]);
         }
 
@@ -183,9 +189,11 @@ static int move_legal(Board *board, Move move) {
     return FAILURE;
 }
 
-// Returns status of game (white win, black win, draw, or nothing)
-static int game_status(Board *board) {
+// Update game move and game ply, and return status of game
+static int update_game_moves(Board *board, Move move) {
     Move moves[MAX_MOVES];
+
+    game_moves[game_ply++] = move;
 
     if (generate_legal_moves(board, moves) == 0) {
         if (in_check(board, board->player)) {

@@ -10,7 +10,6 @@ enum Status {
     DRAW,
 };
 
-void start_singleplayer(Board *board, bool player_first, int time);
-void start_multiplayer(Board *board);
+void start_game(Board *board, bool player_first, int time);
 
 #endif
