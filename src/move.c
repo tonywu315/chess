@@ -84,7 +84,8 @@ void make_move(Board *board, Move move) {
         if (get_piece_type(piece) == PAWN) {
             // Double pawn push sets enpassant square
             if ((start ^ end) == 16) {
-                state.enpassant = start + (get_piece_color(piece) == WHITE ? 8 : -8);
+                state.enpassant =
+                    start + (get_piece_color(piece) == WHITE ? 8 : -8);
             } else if (flag == PROMOTION) {
                 // Promotion move
                 move_promotion(board, end, get_move_promotion(move) + KNIGHT);

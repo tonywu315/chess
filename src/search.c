@@ -155,8 +155,8 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
     // Quiescence search at leaf nodes
     if (depth == 0) {
-        mainline->length = 0;
         increment(info.hnodes);
+        mainline->length = 0;
         return quiescence_search(board, alpha, beta);
     }
 
@@ -174,6 +174,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
             // Return score in non-pv nodes
             // if (alpha + 1 == beta) {}
             increment(info.tt_cuts);
+            mainline->length = 0;
             return score;
         }
     }

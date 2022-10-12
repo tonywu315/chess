@@ -15,6 +15,8 @@ int main(int argc, char **argv) {
 
     if (DEBUG_FLAG) {
         signal(SIGINT, handle_signal);
+        signal(SIGQUIT, handle_signal);
+        signal(SIGSEGV, handle_signal);
     }
 
     parse_arguments(argc, argv, &board, &seconds);
@@ -60,7 +62,7 @@ static void parse_arguments(int argc, char **argv, Board *board, int *seconds) {
 }
 
 static void handle_signal() {
-    printf("\n");
+    printf("\nProgram stopped\n");
     save_to_file();
     exit(0);
 }
