@@ -203,6 +203,10 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
         unmake_move(board, move);
 
+        if (is_time_over()) {
+            return INVALID_SCORE;
+        }
+
         // Alpha cutoff
         if (score > alpha) {
             best_move = move;
