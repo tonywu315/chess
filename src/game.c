@@ -16,7 +16,7 @@ static int move_legal(Board *board, Move move);
 static int update_game_moves(Board *board, Move move);
 
 // Start chess game
-void start_game(Board *board, bool player_first, int time) {
+void start_game(Board *board, int time, bool player_first) {
     int score = eval(board), status = NO_STATUS;
 
     printf("\n=== Chess v%s ===\n", VERSION);

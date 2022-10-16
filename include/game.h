@@ -10,6 +10,6 @@ enum Status {
     DRAW,
 };
 
-void start_game(Board *board, bool player_first, int time);
+void start_game(Board *board, int time, bool player_first);
 
 #endif

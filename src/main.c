@@ -5,13 +5,13 @@
 #include "game.h"
 #include "transposition.h"
 
-static void parse_arguments(int argc, char **argv, Board *board, int *seconds);
 static void handle_signal();
 static void save_to_file();
 
 int main(int argc, char **argv) {
     Board board;
     int seconds = 10;
+    bool player_first = true;
 
     if (DEBUG_FLAG) {
         signal(SIGINT, handle_signal);
@@ -19,31 +19,15 @@ int main(int argc, char **argv) {
         signal(SIGSEGV, handle_signal);
     }
 
-    parse_arguments(argc, argv, &board, &seconds);
-
-    init_attacks();
-    init_evaluation();
-    init_transposition(512);
-
-    start_board(&board);
-    start_game(&board, true, seconds);
-
-    if (transposition) {
-        free(transposition);
-    }
-
-    if (DEBUG_FLAG) {
-        save_to_file();
-    }
-
-    return 0;
-}
-
-static void parse_arguments(int argc, char **argv, Board *board, int *seconds) {
+    // Parse arguments
     if (argc >= 2) {
-        *seconds = atoi(argv[1]);
+        seconds = atoi(argv[1]);
         if (argc >= 3) {
-            if (!strcmp(argv[2], "replay")) {
+            if (!strcmp(argv[2], "white")) {
+                player_first = true;
+            } else if (!strcmp(argv[2], "black")) {
+                player_first = false;
+            } else if (!strcmp(argv[2], "replay")) {
                 FILE *file = fopen(REPLAY_FILE, "rb");
                 if (!file) {
                     perror("error opening file");
@@ -54,11 +38,26 @@ static void parse_arguments(int argc, char **argv, Board *board, int *seconds) {
                     exit(1);
                 }
                 replay.is_replay = true;
-            } else if (!strcmp(argv[2], "benchmark")) {
-                benchmark(board, 6);
             }
         }
     }
+
+    init_attacks();
+    init_evaluation();
+    init_transposition(512);
+
+    start_board(&board);
+    start_game(&board, seconds, player_first);
+
+    if (transposition) {
+        free(transposition);
+    }
+
+    if (DEBUG_FLAG) {
+        save_to_file();
+    }
+
+    return 0;
 }
 
 static void handle_signal() {
