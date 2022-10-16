@@ -32,7 +32,7 @@ target_include_directories(chess.out PRIVATE include)
 target_link_libraries(chess.out PRIVATE m)
 
 # Add preprocessor macros
-target_compile_definitions(chess.out PRIVATE LOG)
+target_compile_definitions(chess.out PRIVATE DEBUG)
 
 # Chess library file for tests
 add_library(chesslib ${SOURCES})

@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -33,6 +34,8 @@
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
+#define REPLAY_FILE "./build/replay_information"
+
 // Debug flag
 #ifdef DEBUG
 #define DEBUG_FLAG true
@@ -40,17 +43,10 @@
 #define DEBUG_FLAG false
 #endif
 
-// Log flag
-#ifdef LOG
-#define LOG_FLAG true
-#else
-#define LOG_FLAG false
-#endif
-
-// Increment if log flag is on
-#define log_increment(x)                                                       \
+// Increment if debug flag is on
+#define increment(x)                                                           \
     do {                                                                       \
-        if (LOG_FLAG)                                                          \
+        if (DEBUG_FLAG)                                                        \
             ++(x);                                                             \
     } while (0)
 
@@ -95,13 +91,13 @@ typedef struct board {
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
-    int player;
     int ply;
+    bool player;
 } Board;
 
 typedef struct line {
-    int length;
     Move moves[MAX_DEPTH];
+    int length;
 } Line;
 
 typedef struct transposition {
@@ -114,6 +110,24 @@ typedef struct transposition {
     bool pv_node;
 } Transposition;
 
+typedef struct search {
+    int depth;
+    U64 nodes;
+    U64 hnodes;
+    U64 qnodes;
+    U64 tt_hits;
+    U64 tt_cuts;
+} Search;
+
+typedef struct replay {
+    union ply_info {
+        Search search;
+        Move move;
+    } ply[MAX_GAME_LENGTH];
+    int game_ply;
+    bool is_replay;
+} Replay;
+
 // Global shared transposition table
 extern Transposition *transposition;
 extern U64 transposition_size;
@@ -121,8 +135,11 @@ extern U64 transposition_size;
 extern Move killers[MAX_DEPTH][2];
 
 extern int game_ply;
-extern U64 qnodes;
 extern bool time_over;
+
+// Information to replay a game for debugging
+extern Search info;
+extern Replay replay;
 
 // clang-format off
 enum Square {
@@ -177,6 +194,16 @@ enum MoveType {
     CASTLING,
 };
 // clang-format on
+
+// Determine if search is over
+static inline bool is_time_over() {
+    if (DEBUG_FLAG && replay.is_replay && game_ply < replay.game_ply) {
+        return (replay.ply[game_ply].search.depth == info.depth) &&
+               (replay.ply[game_ply].search.nodes == info.nodes) &&
+               (replay.ply[game_ply].search.qnodes == info.qnodes);
+    }
+    return time_over;
+}
 
 // Get string coordinates from square
 static inline char *get_coordinates(int square) {

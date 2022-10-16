@@ -72,19 +72,6 @@ void print_board(const Board *board, int score, bool game_over) {
         printf("Player to move: %s\n",
                board->player == WHITE ? "White" : "Black");
     }
-
-    // Print extra information for debugging
-    if (DEBUG_FLAG) {
-        State state = board->state[board->ply];
-        printf("\nScore: %d\n", score);
-        printf("Castling: %c%c%c%c\n", state.castling & CASTLE_WK ? 'K' : '-',
-               state.castling & CASTLE_WQ ? 'Q' : '-',
-               state.castling & CASTLE_BK ? 'k' : '-',
-               state.castling & CASTLE_BQ ? 'q' : '-');
-        printf("Enpassant: %s\n\n", state.enpassant != NO_SQUARE
-                                        ? get_coordinates(state.enpassant)
-                                        : "none");
-    }
 }
 
 // Print bitboard in an 8x8 square

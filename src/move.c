@@ -84,7 +84,8 @@ void make_move(Board *board, Move move) {
         if (get_piece_type(piece) == PAWN) {
             // Double pawn push sets enpassant square
             if ((start ^ end) == 16) {
-                state.enpassant = start + (get_piece_color(piece) == WHITE ? 8 : -8);
+                state.enpassant =
+                    start + (get_piece_color(piece) == WHITE ? 8 : -8);
             } else if (flag == PROMOTION) {
                 // Promotion move
                 move_promotion(board, end, get_move_promotion(move) + KNIGHT);
@@ -103,17 +104,6 @@ void make_move(Board *board, Move move) {
     // Increment ply, save state, and switch player
     board->state[++board->ply] = state;
     board->player = !board->player;
-
-    if (DEBUG_FLAG) {
-        U64 board_hash = get_hash(board);
-        if (board_hash != board->hash) {
-            debug_printf("%s\n", "Keys do not match");
-            debug_printf("Expected Hash: %" PRIu64 "\n", board_hash);
-            debug_printf("Actual Hash: %" PRIu64 "\n\n", board->hash);
-            print_move(move);
-            exit(1);
-        }
-    }
 }
 
 // Undo a move on the board
@@ -156,17 +146,6 @@ void unmake_move(Board *board, Move move) {
                    castling_key[state.castling] ^
                    enpassant_key[board->state[board->ply].enpassant] ^
                    enpassant_key[state.enpassant] ^ side_key;
-
-    if (DEBUG_FLAG) {
-        U64 board_hash = get_hash(board);
-        if (board_hash != board->hash) {
-            debug_printf("%s\n", "Keys do not match");
-            debug_printf("Expected Hash: %" PRIu64 "\n", board_hash);
-            debug_printf("Actual Hash: %" PRIu64 "\n\n", board->hash);
-            print_move(move);
-            exit(1);
-        }
-    }
 }
 
 // Move piece and update bitboards
