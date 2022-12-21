@@ -74,10 +74,17 @@
 */
 typedef uint16_t Move;
 
-// each of the 64 bits represents a square on the board
+// Each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
 typedef uint64_t U64;
 
+// Information about the current game
+typedef struct game {
+    Move moves[MAX_GAME_LENGTH];
+    int ply;
+} Game;
+
+// Information about irreversible actions
 typedef struct state {
     int capture;
     int castling;
@@ -85,6 +92,7 @@ typedef struct state {
     int draw_ply;
 } State;
 
+// Chess board
 typedef struct board {
     State state[MAX_GAME_LENGTH];
     U64 hash;
@@ -92,14 +100,17 @@ typedef struct board {
     Bitboard occupancies[3];
     int board[64];
     int ply;
+    Move killers[MAX_DEPTH][2];
     bool player;
 } Board;
 
+// Series of moves
 typedef struct line {
     Move moves[MAX_DEPTH];
     int length;
 } Line;
 
+// Transposition table entry
 typedef struct transposition {
     Bitboard hash;
     Move move;
@@ -110,6 +121,7 @@ typedef struct transposition {
     bool pv_node;
 } Transposition;
 
+// Search stats
 typedef struct search {
     int depth;
     U64 nodes;
@@ -119,6 +131,7 @@ typedef struct search {
     U64 tt_cuts;
 } Search;
 
+// Information needed to replay a game for debugging
 typedef struct replay {
     union ply_info {
         Search search;
@@ -128,16 +141,14 @@ typedef struct replay {
     bool is_replay;
 } Replay;
 
+extern Game game;
+
 // Global shared transposition table
 extern Transposition *transposition;
 extern U64 transposition_size;
 
-extern Move killers[MAX_DEPTH][2];
-
-extern int game_ply;
 extern bool time_over;
 
-// Information to replay a game for debugging
 extern Search info;
 extern Replay replay;
 
@@ -151,13 +162,14 @@ enum Square {
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
     A8, B8, C8, D8, E8, F8, G8, H8,
-    NO_SQUARE
+    NO_SQUARE,
 };
+// clang-format on
 
 enum Color {
     WHITE,
     BLACK,
-    NO_COLOR
+    NO_COLOR,
 };
 
 enum PieceType {
@@ -167,14 +179,16 @@ enum PieceType {
     ROOK,
     QUEEN,
     KING,
-    NO_PIECE_TYPE
+    NO_PIECE_TYPE,
 };
 
+// clang-format off
 enum Piece {
     W_PAWN = PAWN,     W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
     B_PAWN = PAWN + 8, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
     NO_PIECE = 15,
 };
+// clang-format on
 
 enum Direction {
     UPRIGHT = 9,
@@ -184,7 +198,7 @@ enum Direction {
     LEFT = -1,
     DOWNRIGHT = -7,
     DOWN = -8,
-    DOWNLEFT = -9
+    DOWNLEFT = -9,
 };
 
 enum MoveType {
@@ -193,14 +207,13 @@ enum MoveType {
     ENPASSANT,
     CASTLING,
 };
-// clang-format on
 
 // Determine if search is over
 static inline bool is_time_over() {
-    if (DEBUG_FLAG && replay.is_replay && game_ply < replay.game_ply) {
-        return (replay.ply[game_ply].search.depth == info.depth) &&
-               (replay.ply[game_ply].search.nodes == info.nodes) &&
-               (replay.ply[game_ply].search.qnodes == info.qnodes);
+    if (DEBUG_FLAG && replay.is_replay && game.ply < replay.game_ply) {
+        return (replay.ply[game.ply].search.depth == info.depth) &&
+               (replay.ply[game.ply].search.nodes == info.nodes) &&
+               (replay.ply[game.ply].search.qnodes == info.qnodes);
     }
     return time_over;
 }

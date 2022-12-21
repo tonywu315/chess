@@ -93,7 +93,7 @@ void set_transposition(U64 hash, int score, int flag, int ply, int depth,
         entry->hash = hash;
         entry->move = move;
         entry->score = score;
-        entry->age = game_ply;
+        entry->age = game.ply;
         entry->depth = depth;
         entry->flag = flag;
     }
@@ -114,7 +114,7 @@ void set_pv_moves(Board *board, Line *mainline, int score) {
         entry->hash = board->hash;
         entry->move = mainline->moves[i];
         entry->score = (i & 1) ? -score : score;
-        entry->age = game_ply;
+        entry->age = game.ply;
         entry->depth = mainline->length - i;
         entry->flag = EXACT_BOUND;
 

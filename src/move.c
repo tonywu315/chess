@@ -104,6 +104,8 @@ void make_move(Board *board, Move move) {
     // Increment ply, save state, and switch player
     board->state[++board->ply] = state;
     board->player = !board->player;
+
+    sizeof(Board);
 }
 
 // Undo a move on the board

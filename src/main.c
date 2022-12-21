@@ -74,7 +74,7 @@ static void save_to_file() {
             exit(1);
         }
 
-        replay.game_ply = game_ply;
+        replay.game_ply = game.ply;
         replay.is_replay = false;
 
         fwrite(&replay, sizeof(Replay), 1, file);

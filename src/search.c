@@ -13,8 +13,6 @@ clock_t depth_time, start_time, end_time;
 Search info = {0};
 Replay replay = {0};
 
-Move killers[MAX_DEPTH][2];
-
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
 static void *chess_clock(void *time);
@@ -52,15 +50,15 @@ int search_position(Board *board, Move *move, int time) {
         score = search(board, -INFINITY, INFINITY, 0, info.depth, &mainline);
 
         // Reset killers table
-        memset(killers, 0, sizeof(killers));
+        memset(board->killers, 0, sizeof(board->killers));
 
         // Stop searching if time is over and discard unfinished score
         if (is_time_over()) {
             // Save partial search information for debugging
             if (DEBUG_FLAG) {
-                replay.ply[game_ply].search.depth = info.depth;
-                replay.ply[game_ply].search.nodes = info.nodes;
-                replay.ply[game_ply].search.qnodes = info.qnodes;
+                replay.ply[game.ply].search.depth = info.depth;
+                replay.ply[game.ply].search.nodes = info.nodes;
+                replay.ply[game.ply].search.qnodes = info.qnodes;
             }
 
             // Decrement depth because it was not fully searched
@@ -221,9 +219,9 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
                 // Store killer moves that cause cutoffs
                 if (board->board[get_move_end(move)] == NO_PIECE &&
                     get_move_flag(move) == NORMAL_MOVE &&
-                    killers[ply][0] != move) {
-                    killers[ply][1] = killers[ply][0];
-                    killers[ply][0] = move;
+                    board->killers[ply][0] != move) {
+                    board->killers[ply][1] = board->killers[ply][0];
+                    board->killers[ply][0] = move;
                 }
 
                 alpha = beta;

@@ -6,8 +6,7 @@
 #include "move_generation.h"
 #include "search.h"
 
-static Move game_moves[MAX_GAME_LENGTH];
-int game_ply = 0;
+Game game;
 
 static int computer_move(Board *board, int *score, int time);
 static int player_move(Board *board);
@@ -65,8 +64,8 @@ static int computer_move(Board *board, int *score, int time) {
 static int player_move(Board *board) {
     Move move;
 
-    if (DEBUG_FLAG && replay.is_replay && game_ply < replay.game_ply) {
-        move = replay.ply[game_ply].move;
+    if (DEBUG_FLAG && replay.is_replay && game.ply < replay.game_ply) {
+        move = replay.ply[game.ply].move;
         make_move(board, move);
         printf("Move: %s%s\n", get_coordinates(get_move_start(move)),
                get_coordinates(get_move_end(move)));
@@ -77,7 +76,7 @@ static int player_move(Board *board) {
     // Input move until it is legal and then make the move
     while (get_move(board, &move) || move_legal(board, move)) {
     }
-    replay.ply[game_ply].move = move;
+    replay.ply[game.ply].move = move;
 
     return update_game_moves(board, move);
 }
@@ -86,6 +85,16 @@ static int player_move(Board *board) {
 static int get_move(Board *board, Move *move) {
     char input[6] = {0};
     int start_file, start_rank, end_file, end_rank, promotion = NO_PIECE_TYPE;
+
+    // FIXME: remove
+    printf("\nGame moves:");
+    for (int i = 0; i < game.ply; i++) {
+        printf(" %s%s",
+            get_coordinates(get_move_start(game.moves[i])),
+            get_coordinates(get_move_end(game.moves[i])));
+    }
+    printf("\nGame ply: %d\n", game.ply);
+    printf("Draw ply: %d\n\n", board->state[game.ply].draw_ply);
 
     printf("Move: ");
     if (!scanf("%5s", input)) {
@@ -117,9 +126,9 @@ static int get_move(Board *board, Move *move) {
     // Option to undo moves
     if (!strcmp(input, "undo")) {
         // Undo 2 moves
-        if (game_ply >= 2) {
-            unmake_move(board, game_moves[--game_ply]);
-            unmake_move(board, game_moves[--game_ply]);
+        if (game.ply >= 2) {
+            unmake_move(board, game.moves[--game.ply]);
+            unmake_move(board, game.moves[--game.ply]);
         }
 
         print_board(board, eval(board), false);
@@ -191,7 +200,7 @@ static int move_legal(Board *board, Move move) {
 static int update_game_moves(Board *board, Move move) {
     Move moves[MAX_MOVES];
 
-    game_moves[game_ply++] = move;
+    game.moves[game.ply++] = move;
 
     if (generate_legal_moves(board, moves) == 0) {
         if (in_check(board, board->player)) {

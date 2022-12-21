@@ -16,9 +16,9 @@ void score_moves(Board *board, Move *moves, MoveList *move_list, Move tt_move,
             score = TT_MOVE;
         } else if (capture != NO_PIECE) {
             score = mvv_lva(board->board[get_move_start(move)], capture);
-        } else if (move == killers[ply][0]) {
+        } else if (move == board->killers[ply][0]) {
             score = KILLER_MOVE + 1;
-        } else if (move == killers[ply][1]) {
+        } else if (move == board->killers[ply][1]) {
             score = KILLER_MOVE;
         } else if (flag == NORMAL_MOVE) {
             score = QUIET_MOVE;
