@@ -26,6 +26,7 @@
 #define SUCCESS 0
 #define FAILURE 1
 
+#define DRAW_SCORE 0
 #define INFINITY 30000
 #define INVALID_SCORE 32767
 
@@ -34,6 +35,7 @@
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
+#define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define REPLAY_FILE "./build/replay_information"
 
 // Debug flag
@@ -94,13 +96,14 @@ typedef struct state {
 
 // Chess board
 typedef struct board {
-    State state[MAX_GAME_LENGTH];
     U64 hash;
+    U64 repetitions[MAX_GAME_LENGTH];
+    State state[MAX_GAME_LENGTH];
+    Move killers[MAX_DEPTH][2];
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
     int ply;
-    Move killers[MAX_DEPTH][2];
     bool player;
 } Board;
 
@@ -112,7 +115,7 @@ typedef struct line {
 
 // Transposition table entry
 typedef struct transposition {
-    Bitboard hash;
+    U64 hash;
     Move move;
     int16_t score;
     uint8_t age;

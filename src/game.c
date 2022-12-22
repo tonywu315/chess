@@ -86,16 +86,6 @@ static int get_move(Board *board, Move *move) {
     char input[6] = {0};
     int start_file, start_rank, end_file, end_rank, promotion = NO_PIECE_TYPE;
 
-    // FIXME: remove
-    printf("\nGame moves:");
-    for (int i = 0; i < game.ply; i++) {
-        printf(" %s%s",
-            get_coordinates(get_move_start(game.moves[i])),
-            get_coordinates(get_move_end(game.moves[i])));
-    }
-    printf("\nGame ply: %d\n", game.ply);
-    printf("Draw ply: %d\n\n", board->state[game.ply].draw_ply);
-
     printf("Move: ");
     if (!scanf("%5s", input)) {
         return FAILURE;

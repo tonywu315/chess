@@ -10,11 +10,12 @@
 bool time_over;
 
 clock_t depth_time, start_time, end_time;
-Search info = {0};
-Replay replay = {0};
+Search info;
+Replay replay;
 
 static int search(Board *board, int alpha, int beta, int ply, int depth,
                   Line *mainline);
+static bool is_repetition(Board *board);
 static void *chess_clock(void *time);
 
 // Search position for best move within time limit
@@ -160,6 +161,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
     increment(info.nodes);
 
+    // Check for repetition
+    if (is_repetition(board)) {
+        return DRAW_SCORE;
+    }
+
     // Check if position is in transposition table
     int score =
         get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
@@ -236,13 +242,25 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
     // Checkmate and stalemate
     if (moves_count == 0) {
-        alpha = check ? -INFINITY + ply : 0;
+        alpha = check ? -INFINITY + ply : DRAW_SCORE;
     }
 
     // Save position to transposition table
     set_transposition(board->hash, alpha, tt_flag, ply, depth, best_move);
 
     return alpha;
+}
+
+// Check if position has occurred before
+static bool is_repetition(Board *board) {
+    int draw_ply = board->state[board->ply].draw_ply;
+
+    for (int i = board->ply - 4; i >= board->ply - draw_ply; i -= 2) {
+        if (board->hash == board->repetitions[i]) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Sleep time seconds

@@ -56,6 +56,9 @@ void make_move(Board *board, Move move) {
     int piece = board->board[start];
     int capture = board->board[end];
 
+    // Save current board hash for repetition detection
+    board->repetitions[board->ply] = board->hash;
+
     // Set current state
     state.capture = capture;
     state.castling &= castling_mask[start] & castling_mask[end];
@@ -101,11 +104,12 @@ void make_move(Board *board, Move move) {
                    enpassant_key[board->state[board->ply].enpassant] ^
                    enpassant_key[state.enpassant] ^ side_key;
 
-    // Increment ply, save state, and switch player
-    board->state[++board->ply] = state;
-    board->player = !board->player;
+    // Increment ply
+    board->ply++;
 
-    sizeof(Board);
+    // Save state and switch player
+    board->state[board->ply] = state;
+    board->player = !board->player;
 }
 
 // Undo a move on the board
