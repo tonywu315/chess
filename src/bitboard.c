@@ -5,28 +5,13 @@
 
 // Initialize board struct to create an empty board
 void init_board(Board *board) {
-    State state = {NO_PIECE, 15, NO_SQUARE, 0};
-
-    memset(board->state, 0, sizeof(board->state));
-    memset(board->pieces, 0, sizeof(board->pieces));
-    memset(board->occupancies, 0, sizeof(board->occupancies));
-
-    board->state[0] = state;
+    *board = (const Board){0};
 
     for (int square = A1; square <= H8; square++) {
         board->board[square] = NO_PIECE;
     }
 
-    board->hash = 0;
     board->player = WHITE;
-    board->ply = 0;
-}
-
-// Load starting chess position
-void start_board(Board *board) {
-    init_board(board);
-    load_fen(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    board->hash = get_hash(board);
 }
 
 // Print the chess board
@@ -105,12 +90,14 @@ void load_fen(Board *board, const char *fen) {
         ['Q'] = W_QUEEN,  ['K'] = W_KING,   ['p'] = B_PAWN,   ['n'] = B_KNIGHT,
         ['b'] = B_BISHOP, ['r'] = B_ROOK,   ['q'] = B_QUEEN,  ['k'] = B_KING,
     };
-    int index = 0, square = A8;
+    State state;
+    int index = 0;
 
-    // Load empty board
     init_board(board);
+    state.capture = NO_PIECE;
 
     // Add each piece depending on character
+    int square = A8;
     do {
         if (isalpha(fen[index])) {
             int piece = pieces[(int)fen[index]];
@@ -123,40 +110,70 @@ void load_fen(Board *board, const char *fen) {
         }
     } while (fen[++index] != ' ');
 
+    while (fen[++index] == ' ') {
+    }
+
     // Set current player
-    board->player = fen[++index] == 'w' ? WHITE : BLACK;
-    index += 2;
+    board->player = fen[index] == 'w' ? WHITE : BLACK;
+
+    while (fen[++index] == ' ') {
+    }
 
     // Set castle rights
-    board->state[0].castling = 0;
+    state.castling = 0;
     do {
         switch (fen[index]) {
         case 'K':
-            board->state[0].castling |= CASTLE_WK;
+            state.castling |= CASTLE_WK;
             break;
         case 'Q':
-            board->state[0].castling |= CASTLE_WQ;
+            state.castling |= CASTLE_WQ;
             break;
         case 'k':
-            board->state[0].castling |= CASTLE_BK;
+            state.castling |= CASTLE_BK;
             break;
         case 'q':
-            board->state[0].castling |= CASTLE_BQ;
+            state.castling |= CASTLE_BQ;
             break;
         }
     } while (fen[++index] != ' ');
 
-    // Set enpassant square
-    if (fen[++index] == '-') {
-        index += 2;
-    } else {
-        board->state[0].enpassant =
-            make_square(fen[index] - 'a', (fen[index + 1] - '1'));
-        index += 3;
+    while (fen[++index] == ' ') {
     }
 
-    // Set halfmove clock for 50 move draw rule
-    board->state[0].draw_ply = fen[index] - '0';
+    // Set enpassant square
+    if (fen[index] == '-') {
+        state.enpassant = NO_SQUARE;
+    } else {
+        state.enpassant = make_square(fen[index] - 'a', (fen[index + 1] - '1'));
+        index++;
+    }
+
+    while (fen[++index] == ' ') {
+    }
+
+    // Get halfmove clock
+    state.draw_ply = 0;
+    do {
+        state.draw_ply = 10 * state.draw_ply + fen[index] - '0';
+    } while (fen[++index] != ' ');
+
+    while (fen[++index] == ' ') {
+    }
+
+    // Get fullmove counter
+    int fullmove = 0;
+    do {
+        fullmove = fullmove * 10 + fen[index] - '0';
+        index++;
+    } while (fen[index] >= '0' && fen[index] <= '9');
+
+    // Convert fullmove to ply
+    board->ply = (fullmove - 1) * 2;
+    if (board->player == BLACK) {
+        board->ply++;
+    }
+    game.ply = board->ply;
 
     // Add pieces to occupancy bitboards
     for (int piece = PAWN; piece <= KING; piece++) {
@@ -165,5 +182,6 @@ void load_fen(Board *board, const char *fen) {
     }
     board->occupancies[2] = board->occupancies[0] | board->occupancies[1];
 
+    board->state[board->ply] = state;
     board->hash = get_hash(board);
 }

@@ -43,10 +43,11 @@ int main(int argc, char **argv) {
     }
 
     init_attacks();
+    init_board(&board);
     init_evaluation();
     init_transposition(512);
 
-    start_board(&board);
+    load_fen(&board, START_FEN);
     start_game(&board, seconds, player_first);
 
     if (transposition) {

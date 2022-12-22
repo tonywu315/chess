@@ -30,7 +30,6 @@ int main(int argc, char **argv) {
         return FAILURE;
     }
 
-    start_board(&board);
     init_attacks();
 
     load_fen(&board, positions[position]);
