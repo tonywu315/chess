@@ -122,13 +122,6 @@ bool load_fen(Board *board, const char *fen) {
     // Set board to created board
     *board = new_board;
 
-    // Add pieces to occupancy bitboards
-    for (int piece = PAWN; piece <= KING; piece++) {
-        board->occupancies[0] |= board->pieces[piece];
-        board->occupancies[1] |= board->pieces[piece + 8];
-    }
-    board->occupancies[2] = board->occupancies[0] | board->occupancies[1];
-
     board->state[board->ply].capture = NO_PIECE;
     board->hash = get_hash(board);
     game.ply = board->ply;
@@ -230,6 +223,13 @@ static inline bool load_pieces(Board *board, const char *pieces) {
     if (!(rank == 7 && file == 8 && square == A2)) {
         return false;
     }
+
+    // Add pieces to occupancy bitboards
+    for (int piece = PAWN; piece <= KING; piece++) {
+        board->occupancies[0] |= board->pieces[piece];
+        board->occupancies[1] |= board->pieces[piece + 8];
+    }
+    board->occupancies[2] = board->occupancies[0] | board->occupancies[1];
 
     // Check that the promotion squares do not contain pawns
     if ((board->pieces[W_PAWN] & UINT64_C(0xFF00000000000000)) |
