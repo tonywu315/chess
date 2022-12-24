@@ -1,9 +1,10 @@
 #include "attacks.h"
 #include "benchmark.h"
-#include "bitboard.h"
+#include "board.h"
 #include "evaluation.h"
 #include "game.h"
 #include "transposition.h"
+#include "uci.h"
 
 static void handle_signal();
 static void save_to_file();
@@ -19,36 +20,16 @@ int main(int argc, char **argv) {
         signal(SIGSEGV, handle_signal);
     }
 
-    // Parse arguments
-    if (argc >= 2) {
-        seconds = atoi(argv[1]);
-        if (argc >= 3) {
-            if (!strcmp(argv[2], "white")) {
-                player_first = true;
-            } else if (!strcmp(argv[2], "black")) {
-                player_first = false;
-            } else if (!strcmp(argv[2], "replay")) {
-                FILE *file = fopen(REPLAY_FILE, "rb");
-                if (!file) {
-                    perror("error opening file");
-                    exit(1);
-                }
-                if (!fread(&replay, sizeof(Replay), 1, file)) {
-                    perror("error reading file");
-                    exit(1);
-                }
-                replay.is_replay = true;
-            }
-        }
-    }
-
     init_attacks();
     init_board(&board);
     init_evaluation();
     init_transposition(512);
 
     load_fen(&board, START_FEN);
-    start_game(&board, seconds, player_first);
+
+    start_uci(&board);
+
+    // start_game(&board, seconds, player_first);
 
     if (transposition) {
         free(transposition);

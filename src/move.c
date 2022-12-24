@@ -154,6 +154,22 @@ void unmake_move(Board *board, Move move) {
                    enpassant_key[state.enpassant] ^ side_key;
 }
 
+// Check if move is legal and make the move if it is
+bool move_legal(Board *board, Move move) {
+    Move moves[MAX_MOVES];
+    int count = generate_legal_moves(board, moves);
+
+    // Iterate through all legal moves and check if the move is in there */
+    for (int i = 0; i < count; i++) {
+        if ((moves[i] & UINT16_C(0xCFFF)) == (move & UINT16_C(0xCFFF))) {
+            make_move(board, moves[i]);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Move piece and update bitboards
 static inline void move_piece(Board *board, int start, int end) {
     int piece = board->board[start];

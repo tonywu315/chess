@@ -4,14 +4,13 @@
 #include "move_generation.h"
 #include "transposition.h"
 
-static bool load_move_counters(Board *board, const char *halfmove,
+static inline bool load_move_counters(Board *board, const char *halfmove,
                                const char *fullmove);
-static bool load_player(Board *board, const char *player);
-static bool load_pieces(Board *board, const char *pieces);
-static bool load_castling(Board *board, const char *castling);
-static bool load_enpassant(Board *board, const char *enpassant);
-
-static int parse_integer(const char *str);
+static inline bool load_player(Board *board, const char *player);
+static inline bool load_pieces(Board *board, const char *pieces);
+static inline bool load_castling(Board *board, const char *castling);
+static inline bool load_enpassant(Board *board, const char *enpassant);
+static inline int parse_integer(const char *str);
 
 // Initialize board struct to create an empty board
 void init_board(Board *board) {
@@ -96,12 +95,11 @@ void print_bitboard(Bitboard bitboard) {
 // Validate Forsyth-Edwards Notation string and load board position if valid
 bool load_fen(Board *board, const char *fen) {
     Board new_board = {0};
-    char string[128];
+    char string[128] = "";
     char *pieces, *player, *castling, *enpassant, *halfmove, *fullmove;
 
     // Split FEN string into fields
-    strncpy(string, fen, 128);
-    string[127] = '\0';
+    strncat(string, fen, sizeof(string) - 1);
     pieces = strtok(string, " ");
     player = strtok(NULL, " ");
     castling = strtok(NULL, " ");
@@ -139,7 +137,7 @@ bool load_fen(Board *board, const char *fen) {
 }
 
 // Load halfmove and fullmove counters from FEN string
-static bool load_move_counters(Board *board, const char *halfmove,
+static inline bool load_move_counters(Board *board, const char *halfmove,
                                const char *fullmove) {
     State state;
 
@@ -168,7 +166,7 @@ static bool load_move_counters(Board *board, const char *halfmove,
 }
 
 // Load player from FEN string
-static bool load_player(Board *board, const char *player) {
+static inline bool load_player(Board *board, const char *player) {
     if (!strcmp(player, "w")) {
         board->player = WHITE;
         return true;
@@ -180,7 +178,7 @@ static bool load_player(Board *board, const char *player) {
 }
 
 // Load pieces from FEN string
-static bool load_pieces(Board *board, const char *pieces) {
+static inline bool load_pieces(Board *board, const char *pieces) {
     const unsigned char piece_codes[] = {
         ['P'] = W_PAWN,   ['N'] = W_KNIGHT, ['B'] = W_BISHOP, ['R'] = W_ROOK,
         ['Q'] = W_QUEEN,  ['K'] = W_KING,   ['p'] = B_PAWN,   ['n'] = B_KNIGHT,
@@ -255,7 +253,7 @@ static bool load_pieces(Board *board, const char *pieces) {
 }
 
 // Load castling rights from FEN string
-static bool load_castling(Board *board, const char *castling) {
+static inline bool load_castling(Board *board, const char *castling) {
     State *state = &board->state[board->ply];
 
     state->castling = 0;
@@ -306,7 +304,7 @@ static bool load_castling(Board *board, const char *castling) {
 }
 
 // Load enpassant square from FEN string
-static bool load_enpassant(Board *board, const char *enpassant) {
+static inline bool load_enpassant(Board *board, const char *enpassant) {
     State *state = &board->state[board->ply];
 
     if (!strcmp(enpassant, "-")) {
@@ -343,7 +341,7 @@ static bool load_enpassant(Board *board, const char *enpassant) {
 }
 
 // Convert string to integer and return -1 if invalid
-static int parse_integer(const char *str) {
+static inline int parse_integer(const char *str) {
     int value = 0;
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] < '0' || str[i] > '9') {

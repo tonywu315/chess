@@ -15,7 +15,7 @@ find_package(Threads REQUIRED)
 set(SOURCES
     src/attacks.c
     src/benchmark.c
-    src/bitboard.c
+    src/board.c
     src/evaluation.c
     src/game.c
     src/move_generation.c
@@ -24,6 +24,7 @@ set(SOURCES
     src/quiescence.c
     src/search.c
     src/transposition.c
+    src/uci.c
 )
 
 # Create executable file

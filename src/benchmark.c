@@ -1,7 +1,7 @@
 
 #include "benchmark.h"
 #include "attacks.h"
-#include "bitboard.h"
+#include "board.h"
 #include "move.h"
 #include "move_generation.h"
 

@@ -23,12 +23,12 @@
 #define MAX_DEPTH 64
 #define MAX_MOVES 256
 #define MAX_GAME_LENGTH 1024
-#define SUCCESS 0
-#define FAILURE 1
 
 #define DRAW_SCORE 0
 #define INFINITY 30000
 #define INVALID_SCORE 32767
+
+#define NULL_MOVE 0
 
 #define CASTLE_WK 1
 #define CASTLE_WQ 2
@@ -37,6 +37,7 @@
 
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define REPLAY_FILE "./build/replay_information"
+#define MAX_LINE 1024
 
 // Debug flag
 #ifdef DEBUG
@@ -172,7 +173,6 @@ enum Square {
 enum Color {
     WHITE,
     BLACK,
-    NO_COLOR,
 };
 
 enum PieceType {

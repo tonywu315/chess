@@ -1,6 +1,6 @@
 #include "attacks.h"
 #include "benchmark.h"
-#include "bitboard.h"
+#include "board.h"
 
 #define TEST_POSITIONS 6
 #define TEST_DEPTH 5
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     if (argc == 2) {
         position = atoi(argv[1]) - 1;
     } else {
-        return FAILURE;
+        return 1;
     }
 
     init_attacks();
@@ -38,9 +38,9 @@ int main(int argc, char **argv) {
         perft(&board, depth, &nodes);
         if (nodes != perft_results[position][depth - 1]) {
             printf("perft %d: %ld\n", depth, nodes);
-            return FAILURE;
+            return 1;
         }
     }
 
-    return SUCCESS;
+    return 0;
 }

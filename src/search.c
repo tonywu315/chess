@@ -48,10 +48,10 @@ int search_position(Board *board, Move *move, int time) {
             info.tt_cuts = 0;
         }
 
-        score = search(board, -INFINITY, INFINITY, 0, info.depth, &mainline);
-
-        // Reset killers table
+        // Clear killers table
         memset(board->killers, 0, sizeof(board->killers));
+
+        score = search(board, -INFINITY, INFINITY, 0, info.depth, &mainline);
 
         // Stop searching if time is over and discard unfinished score
         if (is_time_over()) {
@@ -249,6 +249,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     set_transposition(board->hash, alpha, tt_flag, ply, depth, best_move);
 
     return alpha;
+}
+
+// Clear search data
+void clear_search() {
+    clear_transposition();
 }
 
 // Check if position has occurred before

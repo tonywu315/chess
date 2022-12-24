@@ -1,6 +1,6 @@
 #include "game.h"
 #include "attacks.h"
-#include "bitboard.h"
+#include "board.h"
 #include "evaluation.h"
 #include "move.h"
 #include "move_generation.h"
@@ -10,8 +10,7 @@ Game game;
 
 static int computer_move(Board *board, int *score, int time);
 static int player_move(Board *board);
-static int get_move(Board *board, Move *move);
-static int move_legal(Board *board, Move move);
+static bool get_move(Board *board, Move *move);
 static int update_game_moves(Board *board, Move move);
 
 // Start chess game
@@ -74,7 +73,7 @@ static int player_move(Board *board) {
     }
 
     // Input move until it is legal and then make the move
-    while (get_move(board, &move) || move_legal(board, move)) {
+    while (!get_move(board, &move) || !move_legal(board, move)) {
     }
     replay.ply[game.ply].move = move;
 
@@ -82,13 +81,13 @@ static int player_move(Board *board) {
 }
 
 // Parse player move and returns move
-static int get_move(Board *board, Move *move) {
+static bool get_move(Board *board, Move *move) {
     char input[6] = {0};
     int start_file, start_rank, end_file, end_rank, promotion = NO_PIECE_TYPE;
 
     printf("Move: ");
     if (!scanf("%5s", input)) {
-        return FAILURE;
+        return false;
     }
 
     // Get files and ranks in integer representation
@@ -122,7 +121,7 @@ static int get_move(Board *board, Move *move) {
         }
 
         print_board(board, eval(board), false);
-        return FAILURE;
+        return false;
     }
 
     // Kingside castling
@@ -133,7 +132,7 @@ static int get_move(Board *board, Move *move) {
             *move = UINT16_C(0xFFFC);
         }
 
-        return SUCCESS;
+        return true;
     }
 
     // Queenside castling
@@ -144,7 +143,7 @@ static int get_move(Board *board, Move *move) {
             *move = UINT16_C(0xFE3C);
         }
 
-        return SUCCESS;
+        return true;
     }
 
     // Create normal move
@@ -157,33 +156,17 @@ static int get_move(Board *board, Move *move) {
         if (get_piece_type(board->board[start]) == PAWN &&
             start_rank == (board->player == WHITE ? 6 : 1)) {
             if (promotion == NO_PIECE_TYPE) {
-                return FAILURE;
+                return false;
             }
             *move = encode_move(start, end, PROMOTION, promotion);
         } else {
             *move = encode_move(start, end, 0, 0);
         }
 
-        return SUCCESS;
+        return true;
     }
 
-    return FAILURE;
-}
-
-// Make move if it is legal
-static int move_legal(Board *board, Move move) {
-    Move moves[MAX_MOVES];
-    int count = generate_legal_moves(board, moves);
-
-    // Iterate through all legal moves and check if the move is in there */
-    for (int i = 0; i < count; i++) {
-        if ((moves[i] & UINT16_C(0xCFFF)) == (move & UINT16_C(0xCFFF))) {
-            make_move(board, moves[i]);
-            return SUCCESS;
-        }
-    }
-
-    return FAILURE;
+    return false;
 }
 
 // Update game move and game ply, and return status of game
