@@ -16,18 +16,23 @@ static inline void print_pv_moves(Board *board);
 void init_transposition(int megabytes) {
     init_hash_keys();
 
-    // Check that size is a power of 2
-    if ((megabytes & (megabytes - 1)) != 0) {
-        fprintf(stderr, "Error: transposition table size must be power of 2\n");
-        exit(1);
+    // Round megabytes down to previous power of 2
+    if (megabytes <= 0) {
+        megabytes = 1;
+    } else if ((megabytes & (megabytes - 1)) != 0) {
+        megabytes |= megabytes >> 1;
+        megabytes |= megabytes >> 2;
+        megabytes |= megabytes >> 4;
+        megabytes |= megabytes >> 8;
+        megabytes |= megabytes >> 16;
+        megabytes -= megabytes >> 1;
     }
 
     transposition_size =
         (U64)megabytes * UINT64_C(0x100000) / sizeof(Transposition);
 
-    // Free memory if it is already allocated, shouldn't happen
+    // Free memory if it is already allocated
     if (transposition != NULL) {
-        fprintf(stderr, "Error: init_transposition called twice\n");
         free(transposition);
     }
 

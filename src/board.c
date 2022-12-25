@@ -5,7 +5,7 @@
 #include "transposition.h"
 
 static inline bool load_move_counters(Board *board, const char *halfmove,
-                               const char *fullmove);
+                                      const char *fullmove);
 static inline bool load_player(Board *board, const char *player);
 static inline bool load_pieces(Board *board, const char *pieces);
 static inline bool load_castling(Board *board, const char *castling);
@@ -131,7 +131,7 @@ bool load_fen(Board *board, const char *fen) {
 
 // Load halfmove and fullmove counters from FEN string
 static inline bool load_move_counters(Board *board, const char *halfmove,
-                               const char *fullmove) {
+                                      const char *fullmove) {
     State state;
 
     // Get halfmove counter
@@ -270,7 +270,7 @@ static inline bool load_castling(Board *board, const char *castling) {
         }
 
         // Set castling rights
-        for (size_t i = 0; i < n; i++) {
+        for (i = 0; i < n; i++) {
             switch (castling[i]) {
             case 'K':
                 if (board->board[E1] != W_KING || board->board[H1] != W_ROOK) {

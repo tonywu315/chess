@@ -1,13 +1,19 @@
 #include "uci.h"
+#include "benchmark.h"
 #include "board.h"
 #include "move.h"
 #include "search.h"
+#include "transposition.h"
+
+Parameter parameter;
 
 static inline bool parse_input(char *input);
-static inline void parse_options(char *options);
+static inline void parse_options(char *option);
 static inline void parse_position(Board *board, char *position);
-static inline void parse_go(Board *board, char *position);
+static inline void parse_go(Board *board, char *input);
 static inline Move parse_move(Board *board, char *move);
+static inline void trim_whitespace(char **input);
+static inline void lowercase(char *input);
 
 // Start communication with GUI using the Universal Chess Interface
 void start_uci(Board *board) {
@@ -20,19 +26,20 @@ void start_uci(Board *board) {
             continue;
         }
 
-        // Get first token
-        char *token = strtok_r(input, " ", &token_ptr);
-
-        // Ignore empty lines
+        // Get UCI command
+        char *token = strtok_r(input, " \t", &token_ptr);
         if (!token) {
             continue;
         }
 
         if (!strcmp(token, "uci")) {
             printf("id name Chess %s\n", VERSION);
-            printf("id author Tony Wu\n");
-            // TODO: options
-            printf("uciok\n");
+            printf("id author Tony Wu\n\n");
+
+            printf("option name Hash"
+                   " type spin default 512 min 1 max 1073741824\n");
+
+            printf("\nuciok\n");
         } else if (!strcmp(token, "debug")) {
             ;
         } else if (!strcmp(token, "isready")) {
@@ -56,8 +63,14 @@ void start_uci(Board *board) {
         }
 
         // Debug commands (not part of UCI)
-        else if (!strcmp(token, "print")) {
+        else if (!strcmp(token, "board")) {
             print_board(board, 0, false);
+        } else if (!strcmp(token, "perft")) {
+            if ((token = strtok_r(token_ptr, " \t", &token_ptr))) {
+                benchmark(board, atoi(token));
+            } else {
+                benchmark(board, 6);
+            }
         }
     }
 }
@@ -82,11 +95,31 @@ static inline bool parse_input(char *input) {
     return true;
 }
 
-static inline void parse_options(char *options) { ; }
+// Parse options from UCI command
+static inline void parse_options(char *option) {
+    char *token = strtok_r(option, " \t", &option);
+    char *value = strstr(option, " value ");
 
-// Load position from UCI command
+    // Check that input is valid
+    if (!token || strcmp(token, "name") || !value) {
+        return;
+    }
+    value[0] = '\0';
+    value += 7;
+
+    trim_whitespace(&option);
+    trim_whitespace(&value);
+    lowercase(option);
+    lowercase(value);
+
+    if (!strcmp(option, "hash")) {
+        init_transposition(atoi(value));
+    }
+}
+
+// Parse position from UCI command
 static inline void parse_position(Board *board, char *position) {
-    char *token = strtok_r(position, " ", &position);
+    char *token = strtok_r(position, " \t", &position);
     if (!token) {
         return;
     }
@@ -111,17 +144,11 @@ static inline void parse_position(Board *board, char *position) {
         }
 
         // Remove quotes
-        char *end = position + strlen(position) - 1;
-        while (position[0] == ' ' || position[0] == '"') {
-            if (*position++ == '"') {
-                break;
-            }
-        }
-        while (end[0] == ' ' || end[0] == '"') {
-            if (*end-- == '"') {
-                end[1] = '\0';
-                break;
-            }
+        trim_whitespace(&position);
+        size_t end = strlen(position) - 1;
+        if (position[0] == '"' && position[end] == '"') {
+            position[end] = '\0';
+            position++;
         }
 
         if (!load_fen(board, position)) {
@@ -134,37 +161,97 @@ static inline void parse_position(Board *board, char *position) {
     // Load moves
     if (moves) {
         Move move;
-        token = strtok_r(moves, " ", &moves);
+        token = strtok_r(moves, " \t", &moves);
 
         // Play moves while legal
-        while ((token = strtok_r(moves, " ", &moves)) &&
-               (move = parse_move(board, token)) && move_legal(board, move)) {
+        while ((token = strtok_r(moves, " \t", &moves)) &&
+               (move = parse_move(board, token)) != NULL_MOVE &&
+               move_legal(board, move)) {
         }
     }
 
     return;
 }
 
-static inline void parse_go(Board *board, char *position) {}
+// Parse search parameters from UCI command
+static inline void parse_go(Board *board, char *input) {
+    char *token;
 
-// Convert string to move
-static inline Move parse_move(Board *board, char *move) {
-    size_t length = strlen(move);
+    // Reset search parameters
+    parameter = (const Parameter){0};
 
-    // Check for special castling notation
-    if (board->player == WHITE) {
-        if (!strcmp(move, "O-O") || !strcmp(move, "0-0")) {
-            return UINT16_C(0xF1C4);
-        } else if (!strcmp(move, "O-O-O") || !strcmp(move, "0-0-0")) {
-            return UINT16_C(0xF004);
+    // Iterate through all tokens
+    while ((token = strtok_r(input, " \t", &input))) {
+        if (!strcmp(token, "searchmoves")) {
+            Move move;
+            while ((token = strtok_r(input, " \t", &input)) &&
+                   (move = parse_move(board, token)) != NULL_MOVE) {
+                if (move_legal(board, move)) {
+                    unmake_move(board, move);
+                    parameter.search_moves[parameter.move_count++] = move;
+                }
+            }
         }
-    } else {
-        if (!strcmp(move, "O-O") || !strcmp(move, "0-0")) {
-            return UINT16_C(0xFFFC);
-        } else if (!strcmp(move, "O-O-O") || !strcmp(move, "0-0-0")) {
-            return UINT16_C(0xFE3C);
+        if (!token) {
+            break;
+        }
+
+        if (!strcmp(token, "ponder")) {
+            parameter.ponder = true;
+        } else if (!strcmp(token, "wtime")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.white_time = atoi(token);
+        } else if (!strcmp(token, "btime")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.black_time = atoi(token);
+        } else if (!strcmp(token, "winc")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.white_increment = atoi(token);
+        } else if (!strcmp(token, "binc")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.black_increment = atoi(token);
+        } else if (!strcmp(token, "movestogo")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.moves_to_go = atoi(token);
+        } else if (!strcmp(token, "depth")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.max_depth = atoi(token);
+        } else if (!strcmp(token, "nodes")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.max_nodes = atoi(token);
+        } else if (!strcmp(token, "mate")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.mate = atoi(token);
+        } else if (!strcmp(token, "movetime")) {
+            if (!(token = strtok_r(input, " \t", &input))) {
+                return;
+            }
+            parameter.move_time = atoi(token);
+        } else if (!strcmp(token, "infinite")) {
+            parameter.infinite = true;
         }
     }
+}
+
+// Parse move from UCI command and return move
+static inline Move parse_move(Board *board, char *move) {
+    size_t length = strlen(move);
 
     if (length != 4 && length != 5) {
         return NULL_MOVE;
@@ -212,4 +299,26 @@ static inline Move parse_move(Board *board, char *move) {
         return NULL_MOVE;
     }
     return encode_move(start, end, 0, 0);
+}
+
+// Trim whitespace from string in place
+static inline void trim_whitespace(char **input) {
+    // Trim leading space
+    while (**input == ' ' || **input == '\t') {
+        (*input)++;
+    }
+
+    // Trim trailing space
+    char *end = *input + strlen(*input) - 1;
+    while (end > *input && (*end == ' ' || *end == '\t')) {
+        end--;
+    }
+    end[1] = '\0';
+}
+
+// Convert string to lowercase in place
+static inline void lowercase(char *input) {
+    for (; *input; input++) {
+        *input = tolower(*input);
+    }
 }

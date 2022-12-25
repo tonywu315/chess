@@ -9,10 +9,8 @@
 static void handle_signal();
 static void save_to_file();
 
-int main(int argc, char **argv) {
+int main(void) {
     Board board;
-    int seconds = 10;
-    bool player_first = true;
 
     if (DEBUG_FLAG) {
         signal(SIGINT, handle_signal);

@@ -10,7 +10,7 @@
 bool time_over;
 
 clock_t depth_time, start_time, end_time;
-Search info;
+Info info;
 Replay replay;
 
 static int search(Board *board, int alpha, int beta, int ply, int depth,
@@ -252,9 +252,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 }
 
 // Clear search data
-void clear_search() {
-    clear_transposition();
-}
+void clear_search() { clear_transposition(); }
 
 // Check if position has occurred before
 static bool is_repetition(Board *board) {

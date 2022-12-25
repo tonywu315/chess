@@ -81,6 +81,23 @@ typedef uint16_t Move;
 typedef uint64_t Bitboard;
 typedef uint64_t U64;
 
+// Search parameters from the UCI protocol
+typedef struct parameter {
+    Move search_moves[MAX_MOVES];
+    int move_count;
+    int white_time;
+    int black_time;
+    int white_increment;
+    int black_increment;
+    int moves_to_go;
+    int max_depth;
+    int max_nodes;
+    int mate;
+    int move_time;
+    bool ponder;
+    bool infinite;
+} Parameter;
+
 // Information about the current game
 typedef struct game {
     Move moves[MAX_GAME_LENGTH];
@@ -126,25 +143,26 @@ typedef struct transposition {
 } Transposition;
 
 // Search stats
-typedef struct search {
+typedef struct info {
     int depth;
     U64 nodes;
     U64 hnodes;
     U64 qnodes;
     U64 tt_hits;
     U64 tt_cuts;
-} Search;
+} Info;
 
 // Information needed to replay a game for debugging
 typedef struct replay {
     union ply_info {
-        Search search;
+        Info search;
         Move move;
     } ply[MAX_GAME_LENGTH];
     int game_ply;
     bool is_replay;
 } Replay;
 
+extern Parameter parameter;
 extern Game game;
 
 // Global shared transposition table
@@ -153,7 +171,7 @@ extern U64 transposition_size;
 
 extern bool time_over;
 
-extern Search info;
+extern Info info;
 extern Replay replay;
 
 // clang-format off
@@ -345,7 +363,7 @@ static inline int get_population(Bitboard bitboard) {
 // Get index of least significant bit
 static inline int get_lsb(Bitboard bitboard) {
     unsigned long index;
-    return _BitScanForward64(&index, bitboard);
+    _BitScanForward64(&index, bitboard);
     return (int)index;
 }
 
