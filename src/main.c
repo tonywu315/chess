@@ -32,7 +32,7 @@ int main(void) {
 }
 
 static void handle_signal() {
-    printf("\nProgram stopped\n");
+    printf("\n");
     save_to_file();
     exit(0);
 }

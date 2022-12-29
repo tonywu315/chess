@@ -37,7 +37,6 @@
 
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 #define REPLAY_FILE "./build/replay_information"
-#define MAX_LINE 1024
 
 // Debug flag
 #ifdef DEBUG

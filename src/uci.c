@@ -28,7 +28,7 @@ Argument argument;
 pthread_t old_tid, search_tid;
 bool idle = true;
 
-static inline bool parse_input(char *input);
+static inline char *parse_input();
 static inline void parse_option(char *option, __UNUSED__ Board *board);
 static inline void parse_position(char *option, Board *board);
 static inline void parse_go(char *option, Board *board);
@@ -44,7 +44,7 @@ static inline Node *dequeue();
 
 // Start communication with GUI using the Universal Chess Interface
 void start_uci(Board *board) {
-    char input[MAX_LINE], *token_ptr;
+    char *token_ptr;
     pthread_t init_tid;
 
     printf("Chess %s by Tony Wu\n", VERSION);
@@ -54,7 +54,9 @@ void start_uci(Board *board) {
 
     // UCI loop
     while (true) {
-        if (!parse_input(input)) {
+        // Get input
+        char *input = parse_input();
+        if (!input) {
             continue;
         }
 
@@ -84,6 +86,7 @@ void start_uci(Board *board) {
         } else if (!strcmp(token, "stop")) {
             time_over = true;
         } else if (!strcmp(token, "quit")) {
+            free(input);
             break;
         }
 
@@ -107,6 +110,11 @@ void start_uci(Board *board) {
                 enqueue(parse_position, token_ptr);
             }
         } else if (!strcmp(token, "go")) {
+            if (init_tid) {
+                pthread_join(init_tid, NULL);
+                init_tid = 0;
+            }
+
             if (idle) {
                 idle = false;
                 parse_go(token_ptr, board);
@@ -125,27 +133,45 @@ void start_uci(Board *board) {
                 benchmark(board, 6);
             }
         }
+
+        free(input);
+    }
+
+    if (init_tid) {
+        pthread_join(init_tid, NULL);
+    }
+    if (search_tid) {
+        pthread_join(search_tid, NULL);
     }
 }
 
-// Parse input from stdin and return true if no errors
-static inline bool parse_input(char *input) {
-    // Read MAX_LINE - 1 characters from stdin
-    if (!fgets(input, MAX_LINE, stdin)) {
-        perror("error reading input");
-        return false;
+// Parse input from stdin into a buffer
+static inline char *parse_input() {
+    size_t index = 0, size = 1;
+
+    // Allocate memory for input buffer
+    char *input = malloc(size);
+    if (!input) {
+        return NULL;
     }
 
-    // Clear remaining characters from stdin and remove newline
-    size_t length = strcspn(input, "\n");
-    if (length == 10 - 1) {
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) {
+    // Read input from stdin until newline or EOF
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {
+        input[index++] = c;
+
+        // Resize input buffer if necessary
+        if (index == size) {
+            size *= 2;
+            input = realloc(input, size);
+            if (!input) {
+                return NULL;
+            }
         }
     }
-    input[length] = '\0';
+    input[index] = '\0';
 
-    return true;
+    return input;
 }
 
 // Parse options from UCI command
@@ -227,7 +253,7 @@ static inline void parse_position(char *position, Board *board) {
 // Parse search parameters from UCI command
 static inline void parse_go(char *input, Board *board) {
     char *token;
-    Parameter parameters;
+    Parameter parameters = {0};
 
     // Iterate through all tokens
     while ((token = strtok_r(input, " \t", &input))) {
@@ -403,12 +429,14 @@ static void *search_thread() {
     Board *board = argument.board;
     Parameter parameters = argument.parameters;
 
+    // Join old search thread
     if (old_tid) {
         pthread_join(old_tid, NULL);
     }
 
     start_search(board, parameters);
 
+    // Run commands in queue
     Node *node;
     bool next_search = false;
     while ((node = dequeue())) {
@@ -435,9 +463,12 @@ static void *search_thread() {
 // Add a new function to the end of the queue
 static inline void enqueue(void (*function)(char *, Board *), char *input) {
     Node *node = malloc(sizeof(Node));
+
     node->function = function;
-    node->input = strdup(input);
+    node->input = malloc(strlen(input) + 1);
     node->next = NULL;
+
+    strcpy(node->input, input);
 
     if (queue.tail) {
         queue.tail->next = node;

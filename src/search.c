@@ -17,8 +17,10 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 static bool is_repetition(Board *board);
 static void *chess_clock(void *time);
 
-int start_search(Board *board, Parameter parameters) {
-    ;
+void start_search(Board *board, Parameter parameters) {
+    printf("start search\n");
+    sleep(5);
+    printf("end search\n");
 }
 
 // Search position for best move within time limit
