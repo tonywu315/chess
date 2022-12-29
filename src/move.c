@@ -57,7 +57,7 @@ void make_move(Board *board, Move move) {
     int capture = board->board[end];
 
     // Save current board hash for repetition detection
-    board->repetitions[board->ply] = board->hash;
+    game.repetitions[board->ply] = board->hash;
 
     // Set current state
     state.capture = capture;

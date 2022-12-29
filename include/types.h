@@ -46,6 +46,14 @@
 #define DEBUG_FLAG false
 #endif
 
+#ifdef __GNUC__
+#define __UNUSED__ __attribute__((unused))
+#elif _MSC_VER
+#define __UNUSED__ __declspec(unused)
+#else
+#define __UNUSED__
+#endif
+
 // Increment if debug flag is on
 #define increment(x)                                                           \
     do {                                                                       \
@@ -100,6 +108,7 @@ typedef struct parameter {
 
 // Information about the current game
 typedef struct game {
+    U64 repetitions[MAX_GAME_LENGTH];
     Move moves[MAX_GAME_LENGTH];
     int ply;
 } Game;
@@ -115,7 +124,6 @@ typedef struct state {
 // Chess board
 typedef struct board {
     U64 hash;
-    U64 repetitions[MAX_GAME_LENGTH];
     State state[MAX_GAME_LENGTH];
     Move killers[MAX_DEPTH][2];
     Bitboard pieces[16];

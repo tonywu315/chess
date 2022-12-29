@@ -18,16 +18,7 @@ int main(void) {
         signal(SIGSEGV, handle_signal);
     }
 
-    init_attacks();
-    init_board(&board);
-    init_evaluation();
-    init_transposition(512);
-
-    load_fen(&board, START_FEN);
-
     start_uci(&board);
-
-    // start_game(&board, seconds, player_first);
 
     if (transposition) {
         free(transposition);

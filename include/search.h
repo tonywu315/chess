@@ -3,7 +3,7 @@
 
 #include "types.h"
 
+int start_search(Board *board, Parameter parameters);
 int search_position(Board *board, Move *move, int time);
-void clear_search();
 
 #endif

@@ -9,7 +9,6 @@
 
 bool time_over;
 
-clock_t depth_time, start_time, end_time;
 Info info;
 Replay replay;
 
@@ -18,6 +17,10 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 static bool is_repetition(Board *board);
 static void *chess_clock(void *time);
 
+int start_search(Board *board, Parameter parameters) {
+    ;
+}
+
 // Search position for best move within time limit
 int search_position(Board *board, Move *move, int time) {
     pthread_t tid;
@@ -25,6 +28,8 @@ int search_position(Board *board, Move *move, int time) {
     Move best_move = 0;
     int best_score = 0, score = 0;
     U64 final_nodes = 0;
+
+    clock_t depth_time, start_time, end_time;
 
     Move moves[MAX_MOVES];
     int move_count = generate_legal_moves(board, moves);
@@ -251,15 +256,12 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     return alpha;
 }
 
-// Clear search data
-void clear_search() { clear_transposition(); }
-
 // Check if position has occurred before
 static bool is_repetition(Board *board) {
     int draw_ply = board->state[board->ply].draw_ply;
 
     for (int i = board->ply - 4; i >= board->ply - draw_ply; i -= 2) {
-        if (board->hash == board->repetitions[i]) {
+        if (board->hash == game.repetitions[i]) {
             return true;
         }
     }

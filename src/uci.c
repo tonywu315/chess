@@ -1,26 +1,58 @@
 #include "uci.h"
+#include "attacks.h"
 #include "benchmark.h"
 #include "board.h"
+#include "evaluation.h"
 #include "move.h"
 #include "search.h"
 #include "transposition.h"
 
-Parameter parameter;
+typedef struct argument {
+    Board *board;
+    Parameter parameters;
+} Argument;
+
+typedef struct node {
+    void (*function)(char *, Board *);
+    char *input;
+    struct node *next;
+} Node;
+
+typedef struct queue {
+    Node *head;
+    Node *tail;
+} Queue;
+
+Queue queue;
+Argument argument;
+pthread_t old_tid, search_tid;
+bool idle = true;
 
 static inline bool parse_input(char *input);
-static inline void parse_options(char *option);
-static inline void parse_position(Board *board, char *position);
-static inline void parse_go(Board *board, char *input);
-static inline Move parse_move(Board *board, char *move);
+static inline void parse_option(char *option, __UNUSED__ Board *board);
+static inline void parse_position(char *option, Board *board);
+static inline void parse_go(char *option, Board *board);
+static inline Move parse_move(char *move, Board *board);
 static inline void trim_whitespace(char **input);
 static inline void lowercase(char *input);
+
+static void *init_all(void *board);
+static void *search_thread();
+
+static inline void enqueue(void (*function)(char *, Board *), char *input);
+static inline Node *dequeue();
 
 // Start communication with GUI using the Universal Chess Interface
 void start_uci(Board *board) {
     char input[MAX_LINE], *token_ptr;
+    pthread_t init_tid;
 
     printf("Chess %s by Tony Wu\n", VERSION);
 
+    // Initialize internal data structures
+    pthread_create(&init_tid, NULL, init_all, board);
+
+    // UCI loop
     while (true) {
         if (!parse_input(input)) {
             continue;
@@ -32,6 +64,9 @@ void start_uci(Board *board) {
             continue;
         }
 
+        // TODO: implement "debug" and "ponderhit"
+
+        // Commands to run instantly
         if (!strcmp(token, "uci")) {
             printf("id name Chess %s\n", VERSION);
             printf("id author Tony Wu\n\n");
@@ -40,26 +75,44 @@ void start_uci(Board *board) {
                    " type spin default 512 min 1 max 1073741824\n");
 
             printf("\nuciok\n");
-        } else if (!strcmp(token, "debug")) {
-            ;
         } else if (!strcmp(token, "isready")) {
+            if (init_tid) {
+                pthread_join(init_tid, NULL);
+                init_tid = 0;
+            }
             printf("readyok\n");
-        } else if (!strcmp(token, "setoption")) {
-            parse_options(token_ptr);
-        } else if (!strcmp(token, "ucinewgame")) {
-            // TODO: wait until search is over then clear
-            clear_search();
-        } else if (!strcmp(token, "position")) {
-            parse_position(board, token_ptr);
-        } else if (!strcmp(token, "go")) {
-            parse_go(board, token_ptr);
-        } else if (!strcmp(token, "ponderhit")) {
-            // TODO: implement pondering
         } else if (!strcmp(token, "stop")) {
             time_over = true;
         } else if (!strcmp(token, "quit")) {
-            time_over = true;
             break;
+        }
+
+        // Commands to run after current search is finished
+        else if (!strcmp(token, "setoption")) {
+            if (idle) {
+                parse_option(token_ptr, NULL);
+            } else {
+                enqueue(parse_option, token_ptr);
+            }
+        } else if (!strcmp(token, "ucinewgame")) {
+            if (idle) {
+                clear_transposition();
+            } else {
+                enqueue(clear_transposition, token_ptr);
+            }
+        } else if (!strcmp(token, "position")) {
+            if (idle) {
+                parse_position(token_ptr, board);
+            } else {
+                enqueue(parse_position, token_ptr);
+            }
+        } else if (!strcmp(token, "go")) {
+            if (idle) {
+                idle = false;
+                parse_go(token_ptr, board);
+            } else {
+                enqueue(parse_go, token_ptr);
+            }
         }
 
         // Debug commands (not part of UCI)
@@ -96,7 +149,7 @@ static inline bool parse_input(char *input) {
 }
 
 // Parse options from UCI command
-static inline void parse_options(char *option) {
+static inline void parse_option(char *option, __UNUSED__ Board *board) {
     char *token = strtok_r(option, " \t", &option);
     char *value = strstr(option, " value ");
 
@@ -118,7 +171,7 @@ static inline void parse_options(char *option) {
 }
 
 // Parse position from UCI command
-static inline void parse_position(Board *board, char *position) {
+static inline void parse_position(char *position, Board *board) {
     char *token = strtok_r(position, " \t", &position);
     if (!token) {
         return;
@@ -165,30 +218,26 @@ static inline void parse_position(Board *board, char *position) {
 
         // Play moves while legal
         while ((token = strtok_r(moves, " \t", &moves)) &&
-               (move = parse_move(board, token)) != NULL_MOVE &&
+               (move = parse_move(token, board)) != NULL_MOVE &&
                move_legal(board, move)) {
         }
     }
-
-    return;
 }
 
 // Parse search parameters from UCI command
-static inline void parse_go(Board *board, char *input) {
+static inline void parse_go(char *input, Board *board) {
     char *token;
-
-    // Reset search parameters
-    parameter = (const Parameter){0};
+    Parameter parameters;
 
     // Iterate through all tokens
     while ((token = strtok_r(input, " \t", &input))) {
         if (!strcmp(token, "searchmoves")) {
             Move move;
             while ((token = strtok_r(input, " \t", &input)) &&
-                   (move = parse_move(board, token)) != NULL_MOVE) {
+                   (move = parse_move(token, board)) != NULL_MOVE) {
                 if (move_legal(board, move)) {
                     unmake_move(board, move);
-                    parameter.search_moves[parameter.move_count++] = move;
+                    parameters.search_moves[parameters.move_count++] = move;
                 }
             }
         }
@@ -197,60 +246,75 @@ static inline void parse_go(Board *board, char *input) {
         }
 
         if (!strcmp(token, "ponder")) {
-            parameter.ponder = true;
+            parameters.ponder = true;
         } else if (!strcmp(token, "wtime")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.white_time = atoi(token);
+            parameters.white_time = atoi(token);
         } else if (!strcmp(token, "btime")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.black_time = atoi(token);
+            parameters.black_time = atoi(token);
         } else if (!strcmp(token, "winc")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.white_increment = atoi(token);
+            parameters.white_increment = atoi(token);
         } else if (!strcmp(token, "binc")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.black_increment = atoi(token);
+            parameters.black_increment = atoi(token);
         } else if (!strcmp(token, "movestogo")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.moves_to_go = atoi(token);
+            parameters.moves_to_go = atoi(token);
         } else if (!strcmp(token, "depth")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.max_depth = atoi(token);
+            parameters.max_depth = atoi(token);
         } else if (!strcmp(token, "nodes")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.max_nodes = atoi(token);
+            parameters.max_nodes = atoi(token);
         } else if (!strcmp(token, "mate")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.mate = atoi(token);
+            parameters.mate = atoi(token);
         } else if (!strcmp(token, "movetime")) {
             if (!(token = strtok_r(input, " \t", &input))) {
-                return;
+                break;
             }
-            parameter.move_time = atoi(token);
+            parameters.move_time = atoi(token);
         } else if (!strcmp(token, "infinite")) {
-            parameter.infinite = true;
+            parameters.infinite = true;
         }
     }
+
+    // Set infinite search if no time controls are set
+    if (parameters.white_time == 0 && parameters.black_time == 0 &&
+        parameters.move_time) {
+        parameters.infinite = true;
+    }
+
+    if (search_tid) {
+        old_tid = search_tid;
+        search_tid = 0;
+    }
+
+    argument.board = board;
+    argument.parameters = parameters;
+    pthread_create(&search_tid, NULL, search_thread, &argument);
 }
 
 // Parse move from UCI command and return move
-static inline Move parse_move(Board *board, char *move) {
+static inline Move parse_move(char *move, Board *board) {
     size_t length = strlen(move);
 
     if (length != 4 && length != 5) {
@@ -321,4 +385,82 @@ static inline void lowercase(char *input) {
     for (; *input; input++) {
         *input = tolower(*input);
     }
+}
+
+// Initialize all data structures
+static void *init_all(void *board) {
+    init_attacks();
+    init_board(board);
+    init_evaluation();
+    init_transposition(512);
+    load_fen(board, START_FEN);
+
+    return NULL;
+}
+
+// Start searching
+static void *search_thread() {
+    Board *board = argument.board;
+    Parameter parameters = argument.parameters;
+
+    if (old_tid) {
+        pthread_join(old_tid, NULL);
+    }
+
+    start_search(board, parameters);
+
+    Node *node;
+    bool next_search = false;
+    while ((node = dequeue())) {
+        if (node->function == parse_go) {
+            next_search = true;
+        }
+
+        node->function(node->input, board);
+        free(node->input);
+        free(node);
+
+        if (next_search) {
+            break;
+        }
+    }
+
+    if (!next_search) {
+        idle = true;
+    }
+
+    return NULL;
+}
+
+// Add a new function to the end of the queue
+static inline void enqueue(void (*function)(char *, Board *), char *input) {
+    Node *node = malloc(sizeof(Node));
+    node->function = function;
+    node->input = strdup(input);
+    node->next = NULL;
+
+    if (queue.tail) {
+        queue.tail->next = node;
+    }
+    queue.tail = node;
+
+    if (!queue.head) {
+        queue.head = node;
+    }
+}
+
+// Remove and return the first function in the queue
+static inline Node *dequeue() {
+    if (!queue.head) {
+        return NULL;
+    }
+
+    Node *first = queue.head;
+    queue.head = queue.head->next;
+
+    if (!queue.head) {
+        queue.tail = NULL;
+    }
+
+    return first;
 }
