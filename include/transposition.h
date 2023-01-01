@@ -34,5 +34,6 @@ void set_transposition(U64 hash, int score, int flag, int ply, int depth,
 void set_pv_moves(Board *board, Stack *stack, int score);
 void get_pv_moves(Board *board);
 U64 get_hash(Board *board);
+int get_hashfull();
 
 #endif

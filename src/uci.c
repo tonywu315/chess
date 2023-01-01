@@ -23,8 +23,6 @@ typedef struct queue {
     Node *tail;
 } Queue;
 
-int game_ply;
-
 static Queue queue;
 static pthread_t old_tid, search_tid;
 static bool idle = true;
@@ -39,6 +37,7 @@ static inline void lowercase(char *input);
 
 static void *init_all(void *board);
 static void *search_thread(void *argument);
+static void *sleep_thread(void *time);
 
 static inline void enqueue(void (*function)(char *, Board *), char *input);
 static inline Node *dequeue();
@@ -442,7 +441,16 @@ static void *search_thread(void *argument) {
         pthread_join(old_tid, NULL);
     }
 
+    pthread_t clock_tid = 0;
+    if (parameters.move_time) {
+        pthread_create(&clock_tid, NULL, sleep_thread, &parameters.move_time);
+    }
+
     start_search(board, parameters);
+
+    if (clock_tid) {
+        pthread_join(clock_tid, NULL);
+    }
 
     // Run commands in queue
     Node *node;
@@ -464,6 +472,19 @@ static void *search_thread(void *argument) {
     if (!next_search) {
         idle = true;
     }
+
+    return NULL;
+}
+
+// Sleep for a given number of milliseconds
+static void *sleep_thread(void *time) {
+    int milliseconds = *(int *)time;
+    struct timespec ts = {
+        .tv_sec = milliseconds / 1000,
+        .tv_nsec = (milliseconds % 1000) * 1000000,
+    };
+    nanosleep(&ts, NULL);
+    time_over = true;
 
     return NULL;
 }

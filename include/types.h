@@ -13,14 +13,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <math.h>
-#ifdef INFINITY
-#undef INFINITY
-#endif
-
 #define VERSION "2.3"
 
 #define MAX_DEPTH 64
+#define MAX_PLY 128
 #define MAX_MOVES 256
 #define MAX_GAME_LENGTH 1024
 
@@ -36,7 +32,6 @@
 #define CASTLE_BQ 8
 
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-#define REPLAY_FILE "./build/replay_information"
 
 // Debug flag
 #ifdef DEBUG
@@ -55,13 +50,6 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-// Increment if debug flag is on
-#define increment(x)                                                           \
-    do {                                                                       \
-        if (DEBUG_FLAG)                                                        \
-            ++(x);                                                             \
-    } while (0)
 
 // Prints debug information
 #define debug_printf(fmt, ...)                                                 \
@@ -113,37 +101,23 @@ typedef struct board {
 
 // Information about each ply in a search
 typedef struct stack {
-    Move killers[2];
-    Move pv_moves[MAX_DEPTH];
+    Move killer_moves[2];
+    Move pv_moves[MAX_PLY + 1];
     int pv_length;
     int ply;
 } Stack;
 
 // Search stats
 typedef struct info {
-    int depth;
+    int seldepth;
     U64 nodes;
-    U64 hnodes;
-    U64 qnodes;
     U64 tt_hits;
     U64 tt_cuts;
 } Info;
 
-// Information needed to replay a game for debugging
-// typedef struct replay {
-//     union ply_info {
-//         Info search;
-//         Move move;
-//     } ply[MAX_GAME_LENGTH];
-//     int game_ply;
-//     bool is_replay;
-// } Replay;
-
+extern Info info;
 extern int game_ply;
 extern bool time_over;
-
-extern Info info;
-// extern Replay replay;
 
 // clang-format off
 enum Square {
@@ -199,9 +173,6 @@ enum MoveType {
     ENPASSANT,
     CASTLING,
 };
-
-// Determine if search is over
-static inline bool is_time_over() { return time_over; }
 
 // Get string coordinates from square
 static inline char *get_coordinates(int square) {

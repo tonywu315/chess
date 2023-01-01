@@ -36,8 +36,6 @@ void init_transposition(int megabytes) {
         free(transposition);
     }
 
-    // TODO: AlignedMalloc
-
     // Dynamically allocate transposition array
     transposition = calloc(transposition_size, sizeof(Transposition));
     if (transposition == NULL) {
@@ -207,4 +205,17 @@ static inline void print_pv_moves(Board *board) {
             unmake_move(board, move);
         }
     }
+}
+
+// Approximate how full the transposition table is in permill
+int get_hashfull() {
+    int count = 0;
+
+    for (int i = 0; i < 65536; i++) {
+        if (transposition[i].hash) {
+            count++;
+        }
+    }
+
+    return (count * 1000) >> 16;
 }
