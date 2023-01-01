@@ -124,7 +124,6 @@ bool load_fen(Board *board, const char *fen) {
 
     board->state[board->ply].capture = NO_PIECE;
     board->hash = get_hash(board);
-    game.ply = board->ply;
 
     return true;
 }
@@ -153,7 +152,8 @@ static inline bool load_move_counters(Board *board, const char *halfmove,
     }
 
     state.draw_ply = halfmoves;
-    board->state[ply] = state;
+    board->ply = ply;
+    board->state[board->ply] = state;
 
     return true;
 }

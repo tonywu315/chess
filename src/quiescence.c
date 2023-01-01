@@ -6,7 +6,7 @@
 #include "move_order.h"
 
 // Continue limited search until a quiet position is reached
-int quiescence_search(Board *board, int alpha, int beta) {
+int quiescence_search(Board *board, int alpha, int beta) {    
     Move moves[MAX_MOVES];
     MoveList move_list[MAX_MOVES];
 
@@ -14,7 +14,7 @@ int quiescence_search(Board *board, int alpha, int beta) {
         return INVALID_SCORE;
     }
 
-    increment(info.qnodes);
+    increment(info.qnodes); // FIXME:
 
     // Lower bound of score
     int score = eval(board);

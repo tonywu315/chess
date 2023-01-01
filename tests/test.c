@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
         nodes = 0;
         perft(&board, depth, &nodes);
         if (nodes != perft_results[position][depth - 1]) {
-            printf("perft %d: %ld\n", depth, nodes);
+            printf("perft %d: %lld\n", depth, nodes);
             return 1;
         }
     }

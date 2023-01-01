@@ -6,8 +6,8 @@ U64 castling_key[16];
 U64 enpassant_key[64 + 1];
 U64 side_key;
 
-Transposition *transposition = NULL;
-U64 transposition_size = 0;
+static Transposition *transposition = NULL;
+static U64 transposition_size;
 
 static inline void init_hash_keys();
 static inline void print_pv_moves(Board *board);
@@ -36,6 +36,8 @@ void init_transposition(int megabytes) {
         free(transposition);
     }
 
+    // TODO: AlignedMalloc
+
     // Dynamically allocate transposition array
     transposition = calloc(transposition_size, sizeof(Transposition));
     if (transposition == NULL) {
@@ -47,6 +49,13 @@ void init_transposition(int megabytes) {
 // Clear transposition table
 void clear_transposition() {
     memset(transposition, 0, transposition_size * sizeof(Transposition));
+}
+
+// Free dynamically allocated memory
+void free_transposition() {
+    if (transposition) {
+        free(transposition);
+    }
 }
 
 // Check transposition table to see if position has already been searched
@@ -98,18 +107,21 @@ void set_transposition(U64 hash, int score, int flag, int ply, int depth,
         entry->hash = hash;
         entry->move = move;
         entry->score = score;
-        entry->age = game.ply;
+        // entry->age = game_ply;
         entry->depth = depth;
         entry->flag = flag;
     }
 }
 
 // Save principal variation moves to transposition table
-void set_pv_moves(Board *board, Line *mainline, int score) {
+void set_pv_moves(Board *board, Stack *stack, int score) {
     Transposition *entry;
+    Move *pv_moves = stack->pv_moves;
+    int length = stack->pv_length;
 
-    for (int i = 0; i < mainline->length; i++) {
-        entry = &transposition[board->hash & (transposition_size - 1)];
+    for (int i = 0; i < length; i++) {
+        entry = &transposition[board->hash &
+                               (transposition_size - 1)];
 
         // Adjust mate score based off of the root node
         if (is_mate_score(score)) {
@@ -117,17 +129,17 @@ void set_pv_moves(Board *board, Line *mainline, int score) {
         }
 
         entry->hash = board->hash;
-        entry->move = mainline->moves[i];
+        entry->move = pv_moves[i];
         entry->score = (i & 1) ? -score : score;
-        entry->age = game.ply;
-        entry->depth = mainline->length - i;
+        // entry->age = game_ply;
+        entry->depth = length - i;
         entry->flag = EXACT_BOUND;
 
-        make_move(board, mainline->moves[i]);
+        make_move(board, pv_moves[i]);
     }
 
-    for (int i = mainline->length - 1; i >= 0; i--) {
-        unmake_move(board, mainline->moves[i]);
+    for (int i = length - 1; i >= 0; i--) {
+        unmake_move(board, pv_moves[i]);
     }
 }
 

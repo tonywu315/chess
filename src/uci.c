@@ -23,10 +23,11 @@ typedef struct queue {
     Node *tail;
 } Queue;
 
-Queue queue;
-Argument argument;
-pthread_t old_tid, search_tid;
-bool idle = true;
+int game_ply;
+
+static Queue queue;
+static pthread_t old_tid, search_tid;
+static bool idle = true;
 
 static inline char *parse_input();
 static inline void parse_option(char *option, __UNUSED__ Board *board);
@@ -37,20 +38,21 @@ static inline void trim_whitespace(char **input);
 static inline void lowercase(char *input);
 
 static void *init_all(void *board);
-static void *search_thread();
+static void *search_thread(void *argument);
 
 static inline void enqueue(void (*function)(char *, Board *), char *input);
 static inline Node *dequeue();
 
 // Start communication with GUI using the Universal Chess Interface
-void start_uci(Board *board) {
+void start_uci() {
+    Board board;
     char *token_ptr;
     pthread_t init_tid;
 
     printf("Chess %s by Tony Wu\n", VERSION);
 
     // Initialize internal data structures
-    pthread_create(&init_tid, NULL, init_all, board);
+    pthread_create(&init_tid, NULL, init_all, &board);
 
     // UCI loop
     while (true) {
@@ -105,7 +107,7 @@ void start_uci(Board *board) {
             }
         } else if (!strcmp(token, "position")) {
             if (idle) {
-                parse_position(token_ptr, board);
+                parse_position(token_ptr, &board);
             } else {
                 enqueue(parse_position, token_ptr);
             }
@@ -117,7 +119,7 @@ void start_uci(Board *board) {
 
             if (idle) {
                 idle = false;
-                parse_go(token_ptr, board);
+                parse_go(token_ptr, &board);
             } else {
                 enqueue(parse_go, token_ptr);
             }
@@ -125,24 +127,26 @@ void start_uci(Board *board) {
 
         // Debug commands (not part of UCI)
         else if (!strcmp(token, "board")) {
-            print_board(board, 0, false);
+            print_board(&board, 0, false);
         } else if (!strcmp(token, "perft")) {
             if ((token = strtok_r(token_ptr, " \t", &token_ptr))) {
-                benchmark(board, atoi(token));
+                benchmark(&board, atoi(token));
             } else {
-                benchmark(board, 6);
+                benchmark(&board, 6);
             }
         }
 
         free(input);
     }
 
+    // Clean up resources
     if (init_tid) {
         pthread_join(init_tid, NULL);
     }
     if (search_tid) {
         pthread_join(search_tid, NULL);
     }
+    free_transposition();
 }
 
 // Parse input from stdin into a buffer
@@ -248,12 +252,16 @@ static inline void parse_position(char *position, Board *board) {
                move_legal(board, move)) {
         }
     }
+
+    game_ply = board->ply;
 }
 
 // Parse search parameters from UCI command
 static inline void parse_go(char *input, Board *board) {
     char *token;
+
     Parameter parameters = {0};
+    parameters.start_time = get_time();
 
     // Iterate through all tokens
     while ((token = strtok_r(input, " \t", &input))) {
@@ -334,8 +342,8 @@ static inline void parse_go(char *input, Board *board) {
         search_tid = 0;
     }
 
-    argument.board = board;
-    argument.parameters = parameters;
+    static Argument argument;
+    argument = (Argument){board, parameters};
     pthread_create(&search_tid, NULL, search_thread, &argument);
 }
 
@@ -425,9 +433,9 @@ static void *init_all(void *board) {
 }
 
 // Start searching
-static void *search_thread() {
-    Board *board = argument.board;
-    Parameter parameters = argument.parameters;
+static void *search_thread(void *argument) {
+    Board *board = ((Argument *)argument)->board;
+    Parameter parameters = ((Argument *)argument)->parameters;
 
     // Join old search thread
     if (old_tid) {

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16.3)
 
 project(chess C)
 
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 set(CMAKE_C_FLAGS " -pthread -O3 -march=native")
@@ -17,7 +17,6 @@ set(SOURCES
     src/benchmark.c
     src/board.c
     src/evaluation.c
-    src/game.c
     src/move_generation.c
     src/move_order.c
     src/move.c

@@ -53,6 +53,9 @@
 #define __UNUSED__
 #endif
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 // Increment if debug flag is on
 #define increment(x)                                                           \
     do {                                                                       \
@@ -86,31 +89,7 @@ typedef uint16_t Move;
 
 // Each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
-typedef uint64_t U64;
-
-// Search parameters from the UCI protocol
-typedef struct parameter {
-    Move search_moves[MAX_MOVES];
-    int move_count;
-    int white_time;
-    int black_time;
-    int white_increment;
-    int black_increment;
-    int moves_to_go;
-    int max_depth;
-    int max_nodes;
-    int mate;
-    int move_time;
-    bool ponder;
-    bool infinite;
-} Parameter;
-
-// Information about the current game
-typedef struct game {
-    U64 repetitions[MAX_GAME_LENGTH];
-    Move moves[MAX_GAME_LENGTH];
-    int ply;
-} Game;
+typedef unsigned long long U64;
 
 // Information about irreversible actions
 typedef struct state {
@@ -123,8 +102,8 @@ typedef struct state {
 // Chess board
 typedef struct board {
     U64 hash;
+    U64 hashes[MAX_GAME_LENGTH];
     State state[MAX_GAME_LENGTH];
-    Move killers[MAX_DEPTH][2];
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
@@ -132,22 +111,13 @@ typedef struct board {
     bool player;
 } Board;
 
-// Series of moves
-typedef struct line {
-    Move moves[MAX_DEPTH];
-    int length;
-} Line;
-
-// Transposition table entry
-typedef struct transposition {
-    U64 hash;
-    Move move;
-    int16_t score;
-    uint8_t age;
-    uint8_t depth;
-    uint8_t flag;
-    bool pv_node;
-} Transposition;
+// Information about each ply in a search
+typedef struct stack {
+    Move killers[2];
+    Move pv_moves[MAX_DEPTH];
+    int pv_length;
+    int ply;
+} Stack;
 
 // Search stats
 typedef struct info {
@@ -160,26 +130,20 @@ typedef struct info {
 } Info;
 
 // Information needed to replay a game for debugging
-typedef struct replay {
-    union ply_info {
-        Info search;
-        Move move;
-    } ply[MAX_GAME_LENGTH];
-    int game_ply;
-    bool is_replay;
-} Replay;
+// typedef struct replay {
+//     union ply_info {
+//         Info search;
+//         Move move;
+//     } ply[MAX_GAME_LENGTH];
+//     int game_ply;
+//     bool is_replay;
+// } Replay;
 
-extern Parameter parameter;
-extern Game game;
-
-// Global shared transposition table
-extern Transposition *transposition;
-extern U64 transposition_size;
-
+extern int game_ply;
 extern bool time_over;
 
 extern Info info;
-extern Replay replay;
+// extern Replay replay;
 
 // clang-format off
 enum Square {
@@ -237,14 +201,7 @@ enum MoveType {
 };
 
 // Determine if search is over
-static inline bool is_time_over() {
-    if (DEBUG_FLAG && replay.is_replay && game.ply < replay.game_ply) {
-        return (replay.ply[game.ply].search.depth == info.depth) &&
-               (replay.ply[game.ply].search.nodes == info.nodes) &&
-               (replay.ply[game.ply].search.qnodes == info.qnodes);
-    }
-    return time_over;
-}
+static inline bool is_time_over() { return time_over; }
 
 // Get string coordinates from square
 static inline char *get_coordinates(int square) {
@@ -344,7 +301,25 @@ static inline Bitboard rand64() {
     return seed * UINT64_C(0x2545F4914F6CDD1D);
 }
 
-// GCC/Clang compatible compiler
+// Compiler extensions
+
+#if defined(_MSC_VER) && defined(_WIN64)
+
+#include <windows.h>
+// Get time in milliseconds
+static inline U64 get_time() { return GetTickCount64(); }
+
+#else
+
+// Get time in milliseconds
+static inline U64 get_time() {
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return time.tv_sec * 1000 + time.tv_nsec / 10000000;
+}
+
+#endif
+
 #if defined(__GNUC__)
 
 // Get number of bits set
@@ -357,7 +332,6 @@ static inline int get_lsb(Bitboard bitboard) {
     return __builtin_ctzll(bitboard);
 }
 
-// Microsoft C/C++ compatible compiler
 #elif defined(_MSC_VER) && defined(_WIN64)
 
 #include <nmmintrin.h>
