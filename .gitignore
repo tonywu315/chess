@@ -5,6 +5,7 @@
 .clang-format
 
 # Executable files
+chess
 *.exe
 *.out
 

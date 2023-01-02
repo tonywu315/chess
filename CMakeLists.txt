@@ -27,12 +27,9 @@ set(SOURCES
 )
 
 # Create executable file
-add_executable(chess.out ${SOURCES} src/main.c)
-target_include_directories(chess.out PRIVATE include)
-target_link_libraries(chess.out PRIVATE m)
-
-# Add preprocessor macros
-target_compile_definitions(chess.out PRIVATE DEBUG)
+add_executable(chess ${SOURCES} src/main.c)
+target_include_directories(chess PRIVATE include)
+target_link_libraries(chess PRIVATE m)
 
 # Chess library file for tests
 add_library(chesslib ${SOURCES})

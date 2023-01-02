@@ -1,29 +1,9 @@
-SRC_DIR := src
-OBJ_DIR := build/obj
-
-EXE := chess.out
-SRC := $(wildcard $(SRC_DIR)/*.c)
-OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
-
+EXE := chess
 CC := gcc
-CPPFLAGS := -Iinclude -MMD -MP
-CFLAGS := -ansi -Wall -g -Wwrite-strings -Wshadow -pedantic-errors -fstack-protector-all -Wextra
-CCFLAGS := -std=c99 -DLOG -O3 -march=native
+CFLAGS := -std=c99 -Wall -g -Wwrite-strings -Wshadow -pedantic-errors -fstack-protector-all -Wextra
 LDFLAGS := -pthread
-LDLIBS := -lm
 
-.PHONY: all clean
+.PHONY: all
 
-all: $(EXE)
-
-$(EXE): $(OBJ)
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) $(CCFLAGS) -o $@
-
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(CCFLAGS) -c $< -o $@
-
-$(OBJ_DIR):
-	mkdir -p $@
-
-clean:
-	@$(RM) -r $(OBJ_DIR)
+all:
+	$(CC) $(CFLAGS) -O3 -march=native $(LDFLAGS) -Iinclude src/*.c -o $(EXE)

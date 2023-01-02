@@ -33,13 +33,6 @@
 
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-// Debug flag
-#ifdef DEBUG
-#define DEBUG_FLAG true
-#else
-#define DEBUG_FLAG false
-#endif
-
 #ifdef __GNUC__
 #define __UNUSED__ __attribute__((unused))
 #elif _MSC_VER
@@ -50,14 +43,6 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-// Prints debug information
-#define debug_printf(fmt, ...)                                                 \
-    do {                                                                       \
-        if (DEBUG_FLAG)                                                        \
-            fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
-                    __LINE__, __func__, __VA_ARGS__);                          \
-    } while (0)
 
 /*
     Information about a move is encoded in 16 bits

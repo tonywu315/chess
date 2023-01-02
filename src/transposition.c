@@ -118,8 +118,7 @@ void set_pv_moves(Board *board, Stack *stack, int score) {
     int length = stack->pv_length;
 
     for (int i = 0; i < length; i++) {
-        entry = &transposition[board->hash &
-                               (transposition_size - 1)];
+        entry = &transposition[board->hash & (transposition_size - 1)];
 
         // Adjust mate score based off of the root node
         if (is_mate_score(score)) {

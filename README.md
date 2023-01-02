@@ -1,6 +1,6 @@
 # Chess Engine
 
-This is a chess engine written in C. The engine searches the game tree using iterative deepening and [alpha-beta pruning](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning) in order to find the most optimal move.
+This is a UCI chess engine written in C. The engine searches the game tree using iterative deepening and [alpha-beta pruning](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning) in order to find the most optimal move.
 
 ## Installation
 
@@ -9,8 +9,10 @@ This is a chess engine written in C. The engine searches the game tree using ite
     - On Unix: `make`
     - If [CMake](`https://cmake.org/`) is installed: `cmake -S . -B build && cmake --build build`
 
-## Usage
+## UCI Protocol
 
-- Run the executable: `./chess.out [TIME PER MOVE]`
-- To enter moves, type the starting square followed by the ending square (e.g. `e2e4`)
-- For promotions, append the piece to promote to (`q` = queen, `r` = rook, `b` = bishop, `n` = knight)
+The Universal Chess Interface (UCI) is a communication protocol that enables chess engines to communicate with user interfaces. This chess engine is compatible with all GUIs that support UCI. Here is a list of supported UCI options:
+
+- **Hash**
+
+    This is the size of the hash table in megabytes.
