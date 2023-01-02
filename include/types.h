@@ -111,8 +111,6 @@ typedef struct stack {
 typedef struct info {
     int seldepth;
     U64 nodes;
-    U64 tt_hits;
-    U64 tt_cuts;
 } Info;
 
 extern Info info;

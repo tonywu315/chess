@@ -20,6 +20,9 @@ static inline bool check_time(Parameter *parameters, U64 elapsed_time,
 void start_search(Board *board, Parameter parameters) {
     Move best_move = NULL_MOVE, ponder_move = NULL_MOVE;
 
+    // Clear search info
+    info = (Info){0};
+
     // Initialize stack
     Stack stack[MAX_PLY + 1] = {0};
     for (int ply = 0; ply <= MAX_PLY; ply++) {
@@ -61,15 +64,9 @@ void start_search(Board *board, Parameter parameters) {
         printf("nps %.0lf ", (info.nodes * 1000.0) / elapsed_time);
         printf("pv");
         for (int i = 0; i < stack[0].pv_length; i++) {
-            printf(" %s%s",
-                   get_coordinates(get_move_start(stack[0].pv_moves[i])),
-                   get_coordinates(get_move_end(stack[0].pv_moves[i])));
+            print_move(stack[0].pv_moves[i]);
         }
         printf("\n");
-
-        // printf(" string tt hits/cuts: (%.2lf%%, %.2lf%%)\n",
-        //        100.0 * info.tt_hits / info.nodes,
-        //        100.0 * info.tt_cuts / info.nodes);
 
         // Check if we still have time to search deeper
         if (check_time(&parameters, elapsed_time, board->player)) {
@@ -77,11 +74,13 @@ void start_search(Board *board, Parameter parameters) {
         }
     }
 
-    printf("bestmove %s%s ponder %s%s\n",
-           get_coordinates(get_move_start(best_move)),
-           get_coordinates(get_move_end(best_move)),
-           get_coordinates(get_move_start(ponder_move)),
-           get_coordinates(get_move_end(ponder_move)));
+    printf("bestmove");
+    print_move(best_move);
+    if (ponder_move) {
+        printf(" ponder");
+        print_move(ponder_move);
+    }
+    printf("\n");
 }
 
 // Search board for best move
@@ -128,13 +127,10 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
         get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
     if (score != NO_TT_HIT) {
-        info.tt_hits++;
-
         if (!root_node && score != TT_HIT) {
             // TODO: add conditional after implementing PVS
             // Return score in non-pv nodes
             // if (alpha + 1 == beta) {}
-            info.tt_cuts++;
             stack->pv_length = 0;
             return score;
         }
@@ -243,15 +239,15 @@ static inline bool check_time(Parameter *parameters, U64 elapsed_time,
     }
 
     // Calculate target time to search
-    double factor = game_ply < 20 ? 1 : 2 - game_ply / 20.0;
+    double factor = game_ply < 20 ? 1 : MIN(3 - game_ply / 20.0, 1);
     double time =
         player == WHITE
-            ? parameters->white_increment + parameters->white_time / 100.0
-            : parameters->black_increment + parameters->black_time / 100.0;
+            ? parameters->white_increment + parameters->white_time / 40.0
+            : parameters->black_increment + parameters->black_time / 40.0;
     double target = time * factor;
 
     // Calculate expected time to search based on previous search
-    double expected_time = 5.75 * elapsed_time;
+    double expected_time = 4 * elapsed_time;
 
-    return expected_time >= target;
+    return expected_time >= target + 2000;
 }

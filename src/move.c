@@ -25,24 +25,27 @@ static inline void move_promotion(Board *board, int square, int piece);
 static inline void unmove_castle(Board *board, int start, int end);
 static inline void place_piece(Board *board, int square, int piece);
 
-// Print move with start square, end square, and special flags
+// Print move with start square and end square
 void print_move(Move move) {
-    static const char *promotion[4] = {"knight", "bishop", "rook", "queen"};
-    printf("%s%s", get_coordinates(get_move_start(move)),
-           get_coordinates(get_move_end(move)));
-    switch (get_move_flag(move)) {
-    case PROMOTION:
-        printf(" promotion %s\n", promotion[get_move_promotion(move)]);
-        break;
-    case ENPASSANT:
-        printf(" enpassant\n");
-        break;
-    case CASTLING:
-        printf(" castle\n");
-        break;
-    default:
-        printf("\n");
-        break;
+    static const char *promotion[4] = {"n", "b", "r", "q"};
+
+    int flag = get_move_flag(move);
+    if (flag == CASTLING) {
+        if (move == UINT16_C(0xF1C4)) {
+            printf(" e1g1");
+        } else if (move == UINT16_C(0xF004)) {
+            printf(" e1c1");
+        } else if (move == UINT16_C(0xFFFC)) {
+            printf(" e8g8");
+        } else if (move == UINT16_C(0xFE3C)) {
+            printf(" e8c8");
+        }
+    } else {
+        printf(" %s%s", get_coordinates(get_move_start(move)),
+               get_coordinates(get_move_end(move)));
+        if (flag == PROMOTION) {
+            printf("%s", promotion[get_move_promotion(move)]);
+        }
     }
 }
 

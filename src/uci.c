@@ -48,6 +48,10 @@ void start_uci() {
     char *token_ptr;
     pthread_t init_tid;
 
+    // Turn off buffering
+    setbuf(stdout, NULL);
+    setbuf(stdin, NULL);
+
     printf("Chess %s by Tony Wu\n", VERSION);
 
     // Initialize internal data structures
