@@ -13,7 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define VERSION "2.3"
+#define VERSION "3.0"
 
 #define MAX_DEPTH 64
 #define MAX_PLY 128
