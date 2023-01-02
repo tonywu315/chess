@@ -13,50 +13,36 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <math.h>
-#ifdef INFINITY
-#undef INFINITY
-#endif
-
 #define VERSION "2.3"
 
 #define MAX_DEPTH 64
+#define MAX_PLY 128
 #define MAX_MOVES 256
 #define MAX_GAME_LENGTH 1024
-#define SUCCESS 0
-#define FAILURE 1
 
+#define DRAW_SCORE 0
 #define INFINITY 30000
 #define INVALID_SCORE 32767
+
+#define NULL_MOVE 0
 
 #define CASTLE_WK 1
 #define CASTLE_WQ 2
 #define CASTLE_BK 4
 #define CASTLE_BQ 8
 
-#define REPLAY_FILE "./build/replay_information"
+#define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-// Debug flag
-#ifdef DEBUG
-#define DEBUG_FLAG true
+#ifdef __GNUC__
+#define __UNUSED__ __attribute__((unused))
+#elif _MSC_VER
+#define __UNUSED__ __declspec(unused)
 #else
-#define DEBUG_FLAG false
+#define __UNUSED__
 #endif
 
-// Increment if debug flag is on
-#define increment(x)                                                           \
-    do {                                                                       \
-        if (DEBUG_FLAG)                                                        \
-            ++(x);                                                             \
-    } while (0)
-
-// Prints debug information
-#define debug_printf(fmt, ...)                                                 \
-    do {                                                                       \
-        if (DEBUG_FLAG)                                                        \
-            fprintf(stderr, "[%s] %s:%d in %s(): " fmt, __TIME__, __FILE__,    \
-                    __LINE__, __func__, __VA_ARGS__);                          \
-    } while (0)
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 /*
     Information about a move is encoded in 16 bits
@@ -74,10 +60,11 @@
 */
 typedef uint16_t Move;
 
-// each of the 64 bits represents a square on the board
+// Each of the 64 bits represents a square on the board
 typedef uint64_t Bitboard;
-typedef uint64_t U64;
+typedef unsigned long long U64;
 
+// Information about irreversible actions
 typedef struct state {
     int capture;
     int castling;
@@ -85,9 +72,11 @@ typedef struct state {
     int draw_ply;
 } State;
 
+// Chess board
 typedef struct board {
-    State state[MAX_GAME_LENGTH];
     U64 hash;
+    U64 hashes[MAX_GAME_LENGTH];
+    State state[MAX_GAME_LENGTH];
     Bitboard pieces[16];
     Bitboard occupancies[3];
     int board[64];
@@ -95,51 +84,23 @@ typedef struct board {
     bool player;
 } Board;
 
-typedef struct line {
-    Move moves[MAX_DEPTH];
-    int length;
-} Line;
+// Information about each ply in a search
+typedef struct stack {
+    Move killer_moves[2];
+    Move pv_moves[MAX_PLY + 1];
+    int pv_length;
+    int ply;
+} Stack;
 
-typedef struct transposition {
-    Bitboard hash;
-    Move move;
-    int16_t score;
-    uint8_t age;
-    uint8_t depth;
-    uint8_t flag;
-    bool pv_node;
-} Transposition;
-
-typedef struct search {
-    int depth;
+// Search stats
+typedef struct info {
+    int seldepth;
     U64 nodes;
-    U64 hnodes;
-    U64 qnodes;
-    U64 tt_hits;
-    U64 tt_cuts;
-} Search;
+} Info;
 
-typedef struct replay {
-    union ply_info {
-        Search search;
-        Move move;
-    } ply[MAX_GAME_LENGTH];
-    int game_ply;
-    bool is_replay;
-} Replay;
-
-// Global shared transposition table
-extern Transposition *transposition;
-extern U64 transposition_size;
-
-extern Move killers[MAX_DEPTH][2];
-
+extern Info info;
 extern int game_ply;
 extern bool time_over;
-
-// Information to replay a game for debugging
-extern Search info;
-extern Replay replay;
 
 // clang-format off
 enum Square {
@@ -151,13 +112,13 @@ enum Square {
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
     A8, B8, C8, D8, E8, F8, G8, H8,
-    NO_SQUARE
+    NO_SQUARE,
 };
+// clang-format on
 
 enum Color {
     WHITE,
     BLACK,
-    NO_COLOR
 };
 
 enum PieceType {
@@ -167,14 +128,16 @@ enum PieceType {
     ROOK,
     QUEEN,
     KING,
-    NO_PIECE_TYPE
+    NO_PIECE_TYPE,
 };
 
+// clang-format off
 enum Piece {
     W_PAWN = PAWN,     W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
     B_PAWN = PAWN + 8, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
     NO_PIECE = 15,
 };
+// clang-format on
 
 enum Direction {
     UPRIGHT = 9,
@@ -184,7 +147,7 @@ enum Direction {
     LEFT = -1,
     DOWNRIGHT = -7,
     DOWN = -8,
-    DOWNLEFT = -9
+    DOWNLEFT = -9,
 };
 
 enum MoveType {
@@ -193,17 +156,6 @@ enum MoveType {
     ENPASSANT,
     CASTLING,
 };
-// clang-format on
-
-// Determine if search is over
-static inline bool is_time_over() {
-    if (DEBUG_FLAG && replay.is_replay && game_ply < replay.game_ply) {
-        return (replay.ply[game_ply].search.depth == info.depth) &&
-               (replay.ply[game_ply].search.nodes == info.nodes) &&
-               (replay.ply[game_ply].search.qnodes == info.qnodes);
-    }
-    return time_over;
-}
 
 // Get string coordinates from square
 static inline char *get_coordinates(int square) {
@@ -303,7 +255,25 @@ static inline Bitboard rand64() {
     return seed * UINT64_C(0x2545F4914F6CDD1D);
 }
 
-// GCC/Clang compatible compiler
+// Compiler extensions
+
+#if defined(_MSC_VER) && defined(_WIN64)
+
+#include <windows.h>
+// Get time in milliseconds
+static inline U64 get_time() { return GetTickCount64(); }
+
+#else
+
+// Get time in milliseconds
+static inline U64 get_time() {
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return time.tv_sec * 1000 + time.tv_nsec / 10000000;
+}
+
+#endif
+
 #if defined(__GNUC__)
 
 // Get number of bits set
@@ -316,7 +286,6 @@ static inline int get_lsb(Bitboard bitboard) {
     return __builtin_ctzll(bitboard);
 }
 
-// Microsoft C/C++ compatible compiler
 #elif defined(_MSC_VER) && defined(_WIN64)
 
 #include <nmmintrin.h>
@@ -329,7 +298,7 @@ static inline int get_population(Bitboard bitboard) {
 // Get index of least significant bit
 static inline int get_lsb(Bitboard bitboard) {
     unsigned long index;
-    return _BitScanForward64(&index, bitboard);
+    _BitScanForward64(&index, bitboard);
     return (int)index;
 }
 

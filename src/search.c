@@ -7,142 +7,102 @@
 #include "quiescence.h"
 #include "transposition.h"
 
+Info info;
+int game_ply;
 bool time_over;
 
-clock_t depth_time, start_time, end_time;
-Search info = {0};
-Replay replay = {0};
+static int search(Board *board, Stack *stack, int alpha, int beta, int depth);
+static inline bool is_repetition(Board *board);
+static inline void update_pv(Stack *stack, Move move);
+static inline bool check_time(Parameter *parameters, U64 elapsed_time,
+                              int player);
 
-Move killers[MAX_DEPTH][2];
+void start_search(Board *board, Parameter parameters) {
+    Move best_move = NULL_MOVE, ponder_move = NULL_MOVE;
 
-static int search(Board *board, int alpha, int beta, int ply, int depth,
-                  Line *mainline);
-static void *chess_clock(void *time);
+    // Clear search info
+    info = (Info){0};
 
-// Search position for best move within time limit
-int search_position(Board *board, Move *move, int time) {
-    pthread_t tid;
-    Line mainline = {{0}, 0};
-    Move best_move = 0;
-    int best_score = 0, score = 0;
-    U64 final_nodes = 0;
-
-    Move moves[MAX_MOVES];
-    int move_count = generate_legal_moves(board, moves);
-
-    // Start timer
-    time_over = false;
-    pthread_create(&tid, NULL, chess_clock, (void *)&time);
-
-    if (DEBUG_FLAG) {
-        start_time = end_time = clock();
+    // Initialize stack
+    Stack stack[MAX_PLY + 1] = {0};
+    for (int ply = 0; ply <= MAX_PLY; ply++) {
+        stack[ply].ply = ply;
     }
 
     // Iterative deepening
-    for (info.depth = 1;; info.depth++) {
-        if (DEBUG_FLAG) {
-            depth_time = clock();
-            info.nodes = 0;
-            info.hnodes = 0;
-            info.qnodes = 0;
-            info.tt_hits = 0;
-            info.tt_cuts = 0;
+    int max_depth = parameters.max_depth ? parameters.max_depth : MAX_DEPTH;
+    for (int depth = 1; depth <= max_depth; depth++) {
+        // TODO: test if clearing killer tables improves search
+        for (int ply = 0; ply <= info.seldepth; ply++) {
+            stack[ply].killer_moves[0] = NULL_MOVE;
+            stack[ply].killer_moves[1] = NULL_MOVE;
         }
 
-        score = search(board, -INFINITY, INFINITY, 0, info.depth, &mainline);
-
-        // Reset killers table
-        memset(killers, 0, sizeof(killers));
+        int score = search(board, stack, -INFINITY, INFINITY, depth);
 
         // Stop searching if time is over and discard unfinished score
-        if (is_time_over()) {
-            // Save partial search information for debugging
-            if (DEBUG_FLAG) {
-                replay.ply[game_ply].search.depth = info.depth;
-                replay.ply[game_ply].search.nodes = info.nodes;
-                replay.ply[game_ply].search.qnodes = info.qnodes;
-            }
-
-            // Decrement depth because it was not fully searched
-            info.depth--;
+        if (time_over) {
+            time_over = false;
             break;
         }
 
         // Save principal variation moves to the transposition table
-        set_pv_moves(board, &mainline, score);
+        set_pv_moves(board, stack, score);
 
-        best_move = mainline.moves[0];
-        best_score = board->player == WHITE ? score : -score;
+        best_move = stack[0].pv_moves[0];
+        ponder_move = stack[0].pv_moves[1];
+        U64 elapsed_time = get_time() - parameters.start_time + 1;
 
-        if (DEBUG_FLAG) {
-            final_nodes = info.hnodes;
-            end_time = clock();
-            double time_taken =
-                (double)(end_time - depth_time) / CLOCKS_PER_SEC;
-
-            printf("\nDepth: %d\n", info.depth);
-
-            printf("Evaluation: %d\n", best_score);
-            printf("Best moves:");
-            for (int i = 0; i < mainline.length; i++) {
-                printf(" %s%s",
-                       get_coordinates(get_move_start(mainline.moves[i])),
-                       get_coordinates(get_move_end(mainline.moves[i])));
-            }
-
-            printf("\nNodes: %" PRId64 "\n", info.nodes + info.qnodes);
-            printf(" - Interior:  %" PRId64 "\n", info.nodes);
-            printf(" - Horizon:   %" PRId64 "\n", info.hnodes);
-            printf(" - Quiescent: %" PRId64 "\n", info.qnodes - info.hnodes);
-            printf("TT Hits: %" PRId64 " (%.2lf%%)\n", info.tt_hits,
-                   100.0 * info.tt_hits / info.nodes);
-            printf(" - TT Cuts: %" PRId64 " (%.2lf%%)\n", info.tt_cuts,
-                   100.0 * info.tt_cuts / info.nodes);
-            printf("Time: %.3lf seconds, KNPS: %.0f\n", time_taken,
-                   (info.nodes + info.qnodes) / (time_taken * 1000));
+        // Print info
+        printf("info ");
+        printf("depth %d ", depth);
+        printf("seldepth %d ", info.seldepth);
+        printf("time %lld ", elapsed_time);
+        printf("nodes %lld ", info.nodes);
+        printf("score cp %d ", score);
+        printf("hashfull %d ", get_hashfull());
+        printf("nps %.0lf ", (info.nodes * 1000.0) / elapsed_time);
+        printf("pv");
+        for (int i = 0; i < stack[0].pv_length; i++) {
+            print_move(stack[0].pv_moves[i]);
         }
+        printf("\n");
 
-        // Stop searching if there is 1 legal move or max depth is reached
-        if ((move_count == 1) || info.depth == MAX_DEPTH) {
-            pthread_cancel(tid);
+        // Check if we still have time to search deeper
+        if (check_time(&parameters, elapsed_time, board->player)) {
             break;
         }
     }
 
-    if (DEBUG_FLAG) {
-        printf("\nTotal time: %.3lf seconds\n",
-               (double)(end_time - start_time) / CLOCKS_PER_SEC);
-        printf("Branching factor: %.2lf\n", pow(final_nodes, 1.0 / info.depth));
+    printf("bestmove");
+    print_move(best_move);
+    if (ponder_move) {
+        printf(" ponder");
+        print_move(ponder_move);
     }
-
-    // Free resources
-    pthread_join(tid, NULL);
-
-    // Set move to mainline and return score
-    *move = best_move;
-    return best_score;
+    printf("\n");
 }
 
-// Alpha beta algorithm
-static int search(Board *board, int alpha, int beta, int ply, int depth,
-                  Line *mainline) {
-    Move moves[MAX_MOVES], tt_move = 0, best_move = 0;
-    MoveList move_list[MAX_MOVES];
-    Line line = {{0}, 0};
-    uint8_t tt_flag = UPPER_BOUND;
+// Search board for best move
+static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
+    int tt_flag = UPPER_BOUND;
+    int ply = stack->ply;
+    bool root_node = ply == 0;
 
-    // Time over
-    if (is_time_over()) {
+    if (time_over) {
         return INVALID_SCORE;
     }
 
+    info.seldepth = MAX(info.seldepth, ply);
+
+    // Check for repetition
+    if (is_repetition(board)) {
+        return DRAW_SCORE;
+    }
+
     // Mate distance pruning
-    if (alpha < -INFINITY + ply) {
-        alpha = -INFINITY + ply;
-    }
-    if (beta > INFINITY - ply - 1) {
-        beta = INFINITY - ply - 1;
-    }
+    alpha = MAX(alpha, -INFINITY + ply);
+    beta = MIN(beta, INFINITY - ply - 1);
     if (ply && alpha >= beta) {
         return alpha;
     }
@@ -154,34 +114,33 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     }
 
     // Quiescence search at leaf nodes
-    if (depth == 0) {
-        increment(info.hnodes);
-        mainline->length = 0;
+    if (depth == 0 || ply == MAX_PLY) {
+        stack->pv_length = 0;
         return quiescence_search(board, alpha, beta);
     }
 
-    increment(info.nodes);
+    info.nodes++;
 
     // Check if position is in transposition table
+    Move tt_move = NULL_MOVE;
     int score =
         get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
     if (score != NO_TT_HIT) {
-        increment(info.tt_hits);
-
-        if (ply && score != TT_HIT) {
+        if (!root_node && score != TT_HIT) {
             // TODO: add conditional after implementing PVS
             // Return score in non-pv nodes
             // if (alpha + 1 == beta) {}
-            increment(info.tt_cuts);
-            mainline->length = 0;
+            stack->pv_length = 0;
             return score;
         }
     }
 
     // Generate pseudo legal moves and score them
+    Move moves[MAX_MOVES], best_move = NULL_MOVE;
+    MoveList move_list[MAX_MOVES];
     int count = generate_moves(board, moves), moves_count = 0;
-    score_moves(board, moves, move_list, tt_move, ply, count);
+    score_moves(board, stack, moves, move_list, tt_move, count);
 
     // Iterate over moves
     for (int i = 0; i < count; i++) {
@@ -199,11 +158,11 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
         moves_count++;
 
         // Recursively search game tree
-        score = -search(board, -beta, -alpha, ply + 1, depth - 1, &line);
+        score = -search(board, stack + 1, -beta, -alpha, depth - 1);
 
         unmake_move(board, move);
 
-        if (is_time_over()) {
+        if (time_over) {
             return INVALID_SCORE;
         }
 
@@ -211,19 +170,17 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
         if (score > alpha) {
             best_move = move;
 
-            // Update mainline
-            mainline->moves[0] = best_move;
-            memcpy(mainline->moves + 1, line.moves, line.length * sizeof(Move));
-            mainline->length = line.length + 1;
+            // Update principal variation
+            update_pv(stack, best_move);
 
             // Beta cutoff
             if (score >= beta) {
-                // Store killer moves that cause cutoffs
+                // Store quiet moves that cause beta cutoffs
                 if (board->board[get_move_end(move)] == NO_PIECE &&
                     get_move_flag(move) == NORMAL_MOVE &&
-                    killers[ply][0] != move) {
-                    killers[ply][1] = killers[ply][0];
-                    killers[ply][0] = move;
+                    stack->killer_moves[0] != move) {
+                    stack->killer_moves[1] = stack->killer_moves[0];
+                    stack->killer_moves[0] = move;
                 }
 
                 alpha = beta;
@@ -238,7 +195,7 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
 
     // Checkmate and stalemate
     if (moves_count == 0) {
-        alpha = check ? -INFINITY + ply : 0;
+        alpha = check ? -INFINITY + ply : DRAW_SCORE;
     }
 
     // Save position to transposition table
@@ -247,9 +204,50 @@ static int search(Board *board, int alpha, int beta, int ply, int depth,
     return alpha;
 }
 
-// Sleep time seconds
-static void *chess_clock(void *time) {
-    sleep(*(int *)time);
-    time_over = true;
-    return NULL;
+// Check if position has occurred before
+static inline bool is_repetition(Board *board) {
+    int draw_ply = board->state[board->ply].draw_ply;
+
+    for (int i = board->ply - 4; i >= board->ply - draw_ply; i -= 2) {
+        if (board->hash == board->hashes[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Update principal variation
+static inline void update_pv(Stack *stack, Move move) {
+    *stack->pv_moves = move;
+    memcpy(stack->pv_moves + 1, (stack + 1)->pv_moves,
+           (stack + 1)->pv_length * sizeof(Move));
+    stack->pv_length = (stack + 1)->pv_length + 1;
+}
+
+// Check if there is enough time to search deeper
+static inline bool check_time(Parameter *parameters, U64 elapsed_time,
+                              int player) {
+    // Do not stop if infinite time
+    if (parameters->infinite ||
+        (!parameters->white_time && !parameters->black_time)) {
+        return false;
+    }
+
+    // Stop if time is up
+    if (parameters->move_time && elapsed_time >= parameters->move_time) {
+        return true;
+    }
+
+    // Calculate target time to search
+    double factor = game_ply < 20 ? 1 : MIN(3 - game_ply / 20.0, 1);
+    double time =
+        player == WHITE
+            ? parameters->white_increment + parameters->white_time / 40.0
+            : parameters->black_increment + parameters->black_time / 40.0;
+    double target = time * factor;
+
+    // Calculate expected time to search based on previous search
+    double expected_time = 4 * elapsed_time;
+
+    return expected_time >= target + 2000;
 }

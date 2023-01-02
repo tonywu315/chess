@@ -25,24 +25,27 @@ static inline void move_promotion(Board *board, int square, int piece);
 static inline void unmove_castle(Board *board, int start, int end);
 static inline void place_piece(Board *board, int square, int piece);
 
-// Print move with start square, end square, and special flags
+// Print move with start square and end square
 void print_move(Move move) {
-    static const char *promotion[4] = {"knight", "bishop", "rook", "queen"};
-    printf("%s%s", get_coordinates(get_move_start(move)),
-           get_coordinates(get_move_end(move)));
-    switch (get_move_flag(move)) {
-    case PROMOTION:
-        printf(" promotion %s\n", promotion[get_move_promotion(move)]);
-        break;
-    case ENPASSANT:
-        printf(" enpassant\n");
-        break;
-    case CASTLING:
-        printf(" castle\n");
-        break;
-    default:
-        printf("\n");
-        break;
+    static const char *promotion[4] = {"n", "b", "r", "q"};
+
+    int flag = get_move_flag(move);
+    if (flag == CASTLING) {
+        if (move == UINT16_C(0xF1C4)) {
+            printf(" e1g1");
+        } else if (move == UINT16_C(0xF004)) {
+            printf(" e1c1");
+        } else if (move == UINT16_C(0xFFFC)) {
+            printf(" e8g8");
+        } else if (move == UINT16_C(0xFE3C)) {
+            printf(" e8c8");
+        }
+    } else {
+        printf(" %s%s", get_coordinates(get_move_start(move)),
+               get_coordinates(get_move_end(move)));
+        if (flag == PROMOTION) {
+            printf("%s", promotion[get_move_promotion(move)]);
+        }
     }
 }
 
@@ -55,6 +58,9 @@ void make_move(Board *board, Move move) {
     int flag = get_move_flag(move);
     int piece = board->board[start];
     int capture = board->board[end];
+
+    // Save current board hash for repetition detection
+    board->hashes[board->ply] = board->hash;
 
     // Set current state
     state.capture = capture;
@@ -101,8 +107,11 @@ void make_move(Board *board, Move move) {
                    enpassant_key[board->state[board->ply].enpassant] ^
                    enpassant_key[state.enpassant] ^ side_key;
 
-    // Increment ply, save state, and switch player
-    board->state[++board->ply] = state;
+    // Increment ply
+    board->ply++;
+
+    // Save state and switch player
+    board->state[board->ply] = state;
     board->player = !board->player;
 }
 
@@ -146,6 +155,22 @@ void unmake_move(Board *board, Move move) {
                    castling_key[state.castling] ^
                    enpassant_key[board->state[board->ply].enpassant] ^
                    enpassant_key[state.enpassant] ^ side_key;
+}
+
+// Check if move is legal and make the move if it is
+bool move_legal(Board *board, Move move) {
+    Move moves[MAX_MOVES];
+    int count = generate_legal_moves(board, moves);
+
+    // Iterate through all legal moves and check if the move is in there */
+    for (int i = 0; i < count; i++) {
+        if ((moves[i] & UINT16_C(0xCFFF)) == (move & UINT16_C(0xCFFF))) {
+            make_move(board, moves[i]);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // Move piece and update bitboards

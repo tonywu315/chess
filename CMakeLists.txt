@@ -15,24 +15,21 @@ find_package(Threads REQUIRED)
 set(SOURCES
     src/attacks.c
     src/benchmark.c
-    src/bitboard.c
+    src/board.c
     src/evaluation.c
-    src/game.c
     src/move_generation.c
     src/move_order.c
     src/move.c
     src/quiescence.c
     src/search.c
     src/transposition.c
+    src/uci.c
 )
 
 # Create executable file
-add_executable(chess.out ${SOURCES} src/main.c)
-target_include_directories(chess.out PRIVATE include)
-target_link_libraries(chess.out PRIVATE m)
-
-# Add preprocessor macros
-target_compile_definitions(chess.out PRIVATE DEBUG)
+add_executable(chess ${SOURCES} src/main.c)
+target_include_directories(chess PRIVATE include)
+target_link_libraries(chess PRIVATE m)
 
 # Chess library file for tests
 add_library(chesslib ${SOURCES})

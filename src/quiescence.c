@@ -10,11 +10,11 @@ int quiescence_search(Board *board, int alpha, int beta) {
     Move moves[MAX_MOVES];
     MoveList move_list[MAX_MOVES];
 
-    if (is_time_over()) {
+    if (time_over) {
         return INVALID_SCORE;
     }
 
-    increment(info.qnodes);
+    info.nodes++;
 
     // Lower bound of score
     int score = eval(board);

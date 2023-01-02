@@ -1,8 +1,8 @@
 #include "evaluation.h"
 
 // Use pesto's evaluation function
-int middle_value[6] = {82, 337, 365, 477, 1025, 0};
-int end_value[6] = {94, 281, 297, 512, 936, 0};
+static int middle_value[6] = {82, 337, 365, 477, 1025, 0};
+static int end_value[6] = {94, 281, 297, 512, 936, 0};
 static const int middle_position[6][64] = {
     {
         0,   0,   0,   0,   0,   0,   0,   0,  98,  134, 61,  95,  68,

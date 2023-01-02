@@ -6,8 +6,8 @@ U64 castling_key[16];
 U64 enpassant_key[64 + 1];
 U64 side_key;
 
-Transposition *transposition = NULL;
-U64 transposition_size = 0;
+static Transposition *transposition = NULL;
+static U64 transposition_size;
 
 static inline void init_hash_keys();
 static inline void print_pv_moves(Board *board);
@@ -16,18 +16,23 @@ static inline void print_pv_moves(Board *board);
 void init_transposition(int megabytes) {
     init_hash_keys();
 
-    // Check that size is a power of 2
-    if ((megabytes & (megabytes - 1)) != 0) {
-        fprintf(stderr, "Error: transposition table size must be power of 2\n");
-        exit(1);
+    // Round megabytes down to previous power of 2
+    if (megabytes <= 0) {
+        megabytes = 1;
+    } else if ((megabytes & (megabytes - 1)) != 0) {
+        megabytes |= megabytes >> 1;
+        megabytes |= megabytes >> 2;
+        megabytes |= megabytes >> 4;
+        megabytes |= megabytes >> 8;
+        megabytes |= megabytes >> 16;
+        megabytes -= megabytes >> 1;
     }
 
     transposition_size =
         (U64)megabytes * UINT64_C(0x100000) / sizeof(Transposition);
 
-    // Free memory if it is already allocated, shouldn't happen
+    // Free memory if it is already allocated
     if (transposition != NULL) {
-        fprintf(stderr, "Error: init_transposition called twice\n");
         free(transposition);
     }
 
@@ -42,6 +47,13 @@ void init_transposition(int megabytes) {
 // Clear transposition table
 void clear_transposition() {
     memset(transposition, 0, transposition_size * sizeof(Transposition));
+}
+
+// Free dynamically allocated memory
+void free_transposition() {
+    if (transposition) {
+        free(transposition);
+    }
 }
 
 // Check transposition table to see if position has already been searched
@@ -93,17 +105,19 @@ void set_transposition(U64 hash, int score, int flag, int ply, int depth,
         entry->hash = hash;
         entry->move = move;
         entry->score = score;
-        entry->age = game_ply;
+        // entry->age = game_ply;
         entry->depth = depth;
         entry->flag = flag;
     }
 }
 
 // Save principal variation moves to transposition table
-void set_pv_moves(Board *board, Line *mainline, int score) {
+void set_pv_moves(Board *board, Stack *stack, int score) {
     Transposition *entry;
+    Move *pv_moves = stack->pv_moves;
+    int length = stack->pv_length;
 
-    for (int i = 0; i < mainline->length; i++) {
+    for (int i = 0; i < length; i++) {
         entry = &transposition[board->hash & (transposition_size - 1)];
 
         // Adjust mate score based off of the root node
@@ -112,17 +126,17 @@ void set_pv_moves(Board *board, Line *mainline, int score) {
         }
 
         entry->hash = board->hash;
-        entry->move = mainline->moves[i];
+        entry->move = pv_moves[i];
         entry->score = (i & 1) ? -score : score;
-        entry->age = game_ply;
-        entry->depth = mainline->length - i;
+        // entry->age = game_ply;
+        entry->depth = length - i;
         entry->flag = EXACT_BOUND;
 
-        make_move(board, mainline->moves[i]);
+        make_move(board, pv_moves[i]);
     }
 
-    for (int i = mainline->length - 1; i >= 0; i--) {
-        unmake_move(board, mainline->moves[i]);
+    for (int i = length - 1; i >= 0; i--) {
+        unmake_move(board, pv_moves[i]);
     }
 }
 
@@ -190,4 +204,17 @@ static inline void print_pv_moves(Board *board) {
             unmake_move(board, move);
         }
     }
+}
+
+// Approximate how full the transposition table is in permill
+int get_hashfull() {
+    int count = 0;
+
+    for (int i = 0; i < 65536; i++) {
+        if (transposition[i].hash) {
+            count++;
+        }
+    }
+
+    return (count * 1000) >> 16;
 }
