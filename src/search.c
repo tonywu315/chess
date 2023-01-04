@@ -121,6 +121,18 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
 
     info.nodes++;
 
+    // Null move pruning
+    if (!root_node && !check && depth >= 3) {
+        int R = depth >= 6 ? 3 : 2;
+        make_null_move(board);
+        int score = -search(board, stack + 1, -beta, -beta + 1, depth - R - 1);
+        unmake_null_move(board);
+
+        if (score >= beta) {
+            return beta;
+        }
+    }
+
     // Check if position is in transposition table
     Move tt_move = NULL_MOVE;
     int score =
