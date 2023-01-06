@@ -90,22 +90,22 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     bool pv_node = beta - alpha > 1;
     bool root_node = ply == 0;
 
-    if (time_over) {
-        return INVALID_SCORE;
-    }
+    if (!root_node) {
+        if (time_over) {
+            return INVALID_SCORE;
+        }
 
-    info.seldepth = MAX(info.seldepth, ply);
+        // Check for repetition
+        if (is_repetition(board)) {
+            return DRAW_SCORE;
+        }
 
-    // Check for repetition
-    if (is_repetition(board)) {
-        return DRAW_SCORE;
-    }
-
-    // Mate distance pruning
-    alpha = MAX(alpha, -INFINITY + ply);
-    beta = MIN(beta, INFINITY - ply - 1);
-    if (ply && alpha >= beta) {
-        return alpha;
+        // Mate distance pruning
+        alpha = MAX(alpha, -INFINITY + ply);
+        beta = MIN(beta, INFINITY - ply - 1);
+        if (ply && alpha >= beta) {
+            return alpha;
+        }
     }
 
     // Check extension
@@ -121,6 +121,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     }
 
     info.nodes++;
+    info.seldepth = MAX(info.seldepth, ply);
 
     // Check if position is in transposition table
     Move tt_move = NULL_MOVE;
