@@ -128,14 +128,11 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     int score =
         get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
-    if (score != NO_TT_HIT) {
-        if (!root_node && score != TT_HIT) {
-            // TODO: add conditional after implementing PVS
-            // Return score in non-pv nodes
-            // if (alpha + 1 == beta) {}
-            stack->pv_length = 0;
-            return score;
-        }
+    // Return score in non-pv nodes or if score is exact
+    if (!root_node && score != INVALID_SCORE &&
+        (!pv_node || (score > alpha && score < beta))) {
+        stack->pv_length = 0;
+        return score;
     }
 
     // Generate pseudo legal moves and score them

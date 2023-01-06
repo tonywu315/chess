@@ -3,9 +3,6 @@
 
 #include "types.h"
 
-#define TT_HIT 32000
-#define NO_TT_HIT 32001
-
 // Transposition table entry
 typedef struct transposition {
     U64 hash;
