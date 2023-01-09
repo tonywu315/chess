@@ -32,10 +32,10 @@ void start_search(Board *board, Parameter parameters) {
     // Iterative deepening
     int max_depth = parameters.max_depth ? parameters.max_depth : MAX_DEPTH;
     for (int depth = 1; depth <= max_depth; depth++) {
-        // TODO: test if clearing killer tables improves search
-        for (int ply = 0; ply <= info.seldepth; ply++) {
-            stack[ply].killer_moves[0] = NULL_MOVE;
-            stack[ply].killer_moves[1] = NULL_MOVE;
+        // Clear stack
+        memset(&stack, 0, sizeof(stack));
+        for (int ply = 0; ply <= MAX_PLY; ply++) {
+            stack[ply].ply = ply;
         }
 
         int score = search(board, stack, -INFINITY, INFINITY, depth);
@@ -126,13 +126,21 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     info.seldepth = MAX(info.seldepth, ply);
 
     // Null move pruning
-    if (!root_node && !check && depth >= 3) {
+    // Do not use in the endgame to avoid zugzwang positions
+    if (depth >= 3 && !check && !pv_node && !(stack - 1)->null_move &&
+        (board->occupancies[board->player] ^
+         board->pieces[make_piece(PAWN, board->player)] ^
+         board->pieces[make_piece(KING, board->player)])) {
         int R = depth >= 6 ? 3 : 2;
+
+        stack->null_move = true;
         make_null_move(board);
         int score = -search(board, stack + 1, -beta, -beta + 1, depth - R - 1);
         unmake_null_move(board);
+        stack->null_move = false;
 
         if (score >= beta) {
+            stack->pv_length = 0;
             return beta;
         }
     }
