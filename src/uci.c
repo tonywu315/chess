@@ -50,7 +50,6 @@ void start_uci() {
 
     // Turn off buffering
     setbuf(stdout, NULL);
-    setbuf(stdin, NULL);
 
     printf("Chess %s by Tony Wu\n", VERSION);
 

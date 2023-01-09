@@ -9,8 +9,8 @@ U64 side_key;
 static Transposition *transposition = NULL;
 static U64 transposition_size;
 
-static inline void init_hash_keys();
-static inline void print_pv_moves(Board *board);
+static void init_hash_keys();
+static void print_pv_moves(Board *board);
 
 // Initialize transposition table
 void init_transposition(int megabytes) {
@@ -83,11 +83,9 @@ int get_transposition(U64 hash, int alpha, int beta, int ply, int depth,
                 return beta;
             }
         }
-
-        return TT_HIT;
     }
 
-    return NO_TT_HIT;
+    return INVALID_SCORE;
 }
 
 // Save position and score to transposition table
@@ -171,7 +169,7 @@ U64 get_hash(Board *board) {
 }
 
 // Generate random hash keys for transposition table
-static inline void init_hash_keys() {
+static void init_hash_keys() {
     for (int square = A1; square <= H8; square++) {
         for (int piece = PAWN; piece <= KING; piece++) {
             piece_key[piece][square] = rand64();
@@ -189,7 +187,7 @@ static inline void init_hash_keys() {
 }
 
 // Display the principal variation from tranposition table
-static inline void print_pv_moves(Board *board) {
+static void print_pv_moves(Board *board) {
     U64 hash = board->hash;
     Transposition *entry = &transposition[hash & (transposition_size - 1)];
 
