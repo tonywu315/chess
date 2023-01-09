@@ -101,7 +101,7 @@ void make_move(Board *board, Move move) {
         }
     }
 
-    // Update position hashing for castling and enpassant
+    // Update position hashing for castling, enpassant, and side
     board->hash ^= castling_key[board->state[board->ply].castling] ^
                    castling_key[state.castling] ^
                    enpassant_key[board->state[board->ply].enpassant] ^
@@ -150,11 +150,42 @@ void unmake_move(Board *board, Move move) {
     // Decrement ply
     board->ply--;
 
-    // Update position hashing for castling and enpassant
+    // Update position hashing for castling, enpassant, and side
     board->hash ^= castling_key[board->state[board->ply].castling] ^
                    castling_key[state.castling] ^
                    enpassant_key[board->state[board->ply].enpassant] ^
                    enpassant_key[state.enpassant] ^ side_key;
+}
+
+// Make a null move on the board
+void make_null_move(Board *board) {
+    State state = board->state[board->ply];
+
+    // Save current board hash for repetition detection
+    board->hashes[board->ply] = board->hash;
+
+    // Clear enpassant square
+    state.enpassant = NO_SQUARE;
+
+    // Update position hashing for enpassant
+    board->hash ^= enpassant_key[board->state[board->ply].enpassant] ^
+                   enpassant_key[state.enpassant] ^ side_key;
+
+    // Increment ply
+    board->ply++;
+
+    // Save state and switch player
+    board->state[board->ply] = state;
+    board->player = !board->player;
+}
+
+// Undo a null move on the board
+void unmake_null_move(Board *board) {
+    board->player = !board->player;
+    board->ply--;
+    board->hash ^= enpassant_key[board->state[board->ply].enpassant] ^
+                   enpassant_key[board->state[board->ply + 1].enpassant] ^
+                   side_key;
 }
 
 // Check if move is legal and make the move if it is

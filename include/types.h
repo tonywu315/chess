@@ -90,6 +90,7 @@ typedef struct stack {
     Move pv_moves[MAX_PLY + 1];
     int pv_length;
     int ply;
+    bool null_move;
 } Stack;
 
 // Search stats
