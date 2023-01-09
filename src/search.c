@@ -97,6 +97,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
 
         // Check for repetition
         if (is_repetition(board)) {
+            stack->pv_length = 0;
             return DRAW_SCORE;
         }
 
@@ -104,6 +105,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
         alpha = MAX(alpha, -INFINITY + ply);
         beta = MIN(beta, INFINITY - ply - 1);
         if (ply && alpha >= beta) {
+            stack->pv_length = 0;
             return alpha;
         }
     }
