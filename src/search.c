@@ -87,24 +87,27 @@ void start_search(Board *board, Parameter parameters) {
 static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     int tt_flag = UPPER_BOUND;
     int ply = stack->ply;
+    bool pv_node = beta - alpha > 1;
     bool root_node = ply == 0;
 
-    if (time_over) {
-        return INVALID_SCORE;
-    }
+    if (!root_node) {
+        if (time_over) {
+            return INVALID_SCORE;
+        }
 
-    info.seldepth = MAX(info.seldepth, ply);
+        // Check for repetition
+        if (is_repetition(board)) {
+            stack->pv_length = 0;
+            return DRAW_SCORE;
+        }
 
-    // Check for repetition
-    if (is_repetition(board)) {
-        return DRAW_SCORE;
-    }
-
-    // Mate distance pruning
-    alpha = MAX(alpha, -INFINITY + ply);
-    beta = MIN(beta, INFINITY - ply - 1);
-    if (ply && alpha >= beta) {
-        return alpha;
+        // Mate distance pruning
+        alpha = MAX(alpha, -INFINITY + ply);
+        beta = MIN(beta, INFINITY - ply - 1);
+        if (ply && alpha >= beta) {
+            stack->pv_length = 0;
+            return alpha;
+        }
     }
 
     // Check extension
@@ -120,6 +123,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     }
 
     info.nodes++;
+    info.seldepth = MAX(info.seldepth, ply);
 
     // Null move pruning
     if (!root_node && !check && depth >= 3) {
@@ -138,14 +142,11 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     int score =
         get_transposition(board->hash, alpha, beta, ply, depth, &tt_move);
 
-    if (score != NO_TT_HIT) {
-        if (!root_node && score != TT_HIT) {
-            // TODO: add conditional after implementing PVS
-            // Return score in non-pv nodes
-            // if (alpha + 1 == beta) {}
-            stack->pv_length = 0;
-            return score;
-        }
+    // Return score in non-pv nodes or if score is exact
+    if (!root_node && score != INVALID_SCORE &&
+        (!pv_node || (score > alpha && score < beta))) {
+        stack->pv_length = 0;
+        return score;
     }
 
     // Generate pseudo legal moves and score them
@@ -155,6 +156,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     score_moves(board, stack, moves, move_list, tt_move, count);
 
     // Iterate over moves
+    bool pv_found = false;
     for (int i = 0; i < count; i++) {
         // Move next best move to the front
         Move move = sort_moves(move_list, count, i);
@@ -169,8 +171,19 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
 
         moves_count++;
 
-        // Recursively search game tree
-        score = -search(board, stack + 1, -beta, -alpha, depth - 1);
+        // Principal variation search
+        if (!pv_found) {
+            // Search pv move with full window
+            score = -search(board, stack + 1, -beta, -alpha, depth - 1);
+        } else {
+            // Search other moves with null window [alpha, alpha + 1]
+            score = -search(board, stack + 1, -alpha - 1, -alpha, depth - 1);
+
+            // If fail high, search again with full window
+            if (score > alpha) {
+                score = -search(board, stack + 1, -beta, -alpha, depth - 1);
+            }
+        }
 
         unmake_move(board, move);
 
@@ -202,6 +215,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
 
             alpha = score;
             tt_flag = EXACT_BOUND;
+            pv_found = true;
         }
     }
 
