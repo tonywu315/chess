@@ -30,6 +30,7 @@ void start_search(Board *board, Parameter parameters) {
     }
 
     // Iterative deepening
+    int score = INVALID_SCORE;
     int max_depth = parameters.max_depth ? parameters.max_depth : MAX_DEPTH;
     for (int depth = 1; depth <= max_depth; depth++) {
         // Clear stack
@@ -38,7 +39,22 @@ void start_search(Board *board, Parameter parameters) {
             stack[ply].ply = ply;
         }
 
-        int score = search(board, stack, -INFINITY, INFINITY, depth);
+        if (score != INVALID_SCORE) {
+            // Search with a window around the previous score
+            int alpha = score - 50;
+            int beta = score + 50;
+            score = search(board, stack, alpha, beta, depth);
+
+            // If search fails, do a full window search
+            if (score <= alpha || score >= beta) {
+                score = search(board, stack, -INFINITY, INFINITY, depth);
+            }
+        } else {
+            // Full window search on first iteration
+            score = search(board, stack, -INFINITY, INFINITY, depth);
+        }
+
+        // int score = search(board, stack, -INFINITY, INFINITY, depth);
 
         // Stop searching if time is over and discard unfinished score
         if (time_over) {
