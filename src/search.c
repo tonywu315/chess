@@ -33,13 +33,10 @@ void start_search(Board *board, Parameter parameters) {
     int score = INVALID_SCORE;
     int max_depth = parameters.max_depth ? parameters.max_depth : MAX_DEPTH;
     for (int depth = 1; depth <= max_depth; depth++) {
-        // Clear stack
-        memset(&stack, 0, sizeof(stack));
-        for (int ply = 0; ply <= MAX_PLY; ply++) {
-            stack[ply].ply = ply;
-        }
-
-        if (score != INVALID_SCORE) {
+        if (score == INVALID_SCORE) {
+            // Full window search on first iteration
+            score = search(board, stack, -INFINITY, INFINITY, depth);
+        } else {
             // Search with a window around the previous score
             int alpha = score - 50;
             int beta = score + 50;
@@ -49,12 +46,7 @@ void start_search(Board *board, Parameter parameters) {
             if (score <= alpha || score >= beta) {
                 score = search(board, stack, -INFINITY, INFINITY, depth);
             }
-        } else {
-            // Full window search on first iteration
-            score = search(board, stack, -INFINITY, INFINITY, depth);
         }
-
-        // int score = search(board, stack, -INFINITY, INFINITY, depth);
 
         // Stop searching if time is over and discard unfinished score
         if (time_over) {
@@ -90,6 +82,7 @@ void start_search(Board *board, Parameter parameters) {
         }
     }
 
+    // Print best move
     printf("bestmove");
     print_move(best_move);
     if (ponder_move) {
@@ -133,7 +126,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
     }
 
     // Quiescence search at leaf nodes
-    if (depth == 0 || ply == MAX_PLY) {
+    if (depth <= 0 || ply == MAX_PLY) {
         stack->pv_length = 0;
         return quiescence_search(board, alpha, beta);
     }
@@ -155,6 +148,7 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
         unmake_null_move(board);
         stack->null_move = false;
 
+        // If position is too good even after a null move, fail high
         if (score >= beta) {
             stack->pv_length = 0;
             return beta;
@@ -171,6 +165,12 @@ static int search(Board *board, Stack *stack, int alpha, int beta, int depth) {
         (!pv_node || (score > alpha && score < beta))) {
         stack->pv_length = 0;
         return score;
+    }
+
+    // If there is no best move, find one with internal iterative deepening
+    if (depth >= 3 && tt_move == NULL_MOVE) {
+        search(board, stack, alpha, beta, depth - 2);
+        tt_move = stack->pv_moves[0];
     }
 
     // Generate pseudo legal moves and score them
